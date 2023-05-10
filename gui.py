@@ -2,7 +2,7 @@ import sys
 import socket
 import tkinter
 import tkinter.font
-from layout import Layout
+from layout import Layout, DocumentLayout
 from html_parser import HTMLParser, print_tree
 
 
@@ -38,8 +38,18 @@ class Browser:
     def load(self, url: str):
         headers, body = request(url)
         html_tree = HTMLParser(body).parse()
-        layout = Layout()
-        self.display_list = layout.layout(html_tree)
+        self.doc_layout = DocumentLayout(html_tree)
+        self.doc_layout.layout()
+        self.display_list = self.doc_layout.display_list
+        self.draw()
+
+    def load_local(self, file_name: str):
+        with open(file_name, "r") as file:
+            html = file.read()
+        html_tree = HTMLParser(html).parse()
+        self.doc_layout = DocumentLayout(html_tree)
+        self.doc_layout.layout()
+        self.display_list = self.doc_layout.display_list
         self.draw()
 
 
@@ -102,5 +112,6 @@ def request(url: str):
 
 if __name__ == "__main__":
     url = sys.argv[1]
-    Browser().load(url)
+    # Browser().load(url)
+    Browser().load_local("./examples/parse.html")
     tkinter.mainloop()
