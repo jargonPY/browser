@@ -53,7 +53,7 @@ class Layout:
     WIDTH, HEIGHT = 800, 600
     H_STEP, V_STEP = 13, 18
 
-    def __init__(self, node: Node, parent: Node, previous_sibling: Node) -> None:
+    def __init__(self, node: Node, parent: "Layout", previous_sibling: "Layout") -> None:
         self.node = node
         self.parent = parent
         self.previous_sibling = previous_sibling
@@ -61,8 +61,12 @@ class Layout:
 
         self.line: list[TextInLine] = []
         self.display_list: list[TextStyle] = []
-        self.cursor_x: float = Layout.H_STEP
-        self.cursor_y: float = Layout.V_STEP
+
+        self.rel_x: float = 0  # offset from abs_x within the block
+        self.rel_y: float = 0  # offset from abs_y within the block
+        self.block_width: float = 0
+        self.block_height: float = 0
+
         self.weight: Literal["normal", "bold"] = "normal"
         self.style: Literal["roman", "italic"] = "roman"
         self.size = 16
@@ -78,7 +82,42 @@ class Layout:
         else:
             return "block"
 
+    def compute_block_width(self):
+        # Blocks are as wide as their parents
+        self.block_width = self.parent.block_width
+
+    def compute_block_x_position(self):
+        # The block starts at its parent's left edge
+        self.abs_x = self.parent.abs_x
+
+    def compute_block_y_position(self):
+        # Vertical position depends on the position and height of their previous sibling
+        if self.previous_sibling:
+            self.abs_y = self.previous_sibling.abs_y + self.previous_sibling.block_height
+        # If there is no previous siblng, the block starts at the paren'ts top edge
+        else:
+            self.abs_y = self.parent.abs_y
+
+    def compute_block_height(self, mode: Literal["block", "inline"]):
+        #  A block that contains other blocks should be tall enough to contain all of its children, so its height should be the sum of its children’s heights
+        if mode == "block":
+            self.block_height = sum([child.block_height for child in self.children])
+        # A block that contains text doesn’t have children; instead, it needs to be tall enough to contain all its text
+        else:
+            self.block_height = self.rel_y
+
     def layout(self):
+        """
+        Layout steps:
+        1. Compute the 'width', 'abs_x', and 'abs_y' fields from the 'parent' and 'previous_sibling' fields.
+        2. Create layout object for each child element.
+        3. Layout the children nodes by calling their layout method recursively.
+        4. Compute the 'height' field based on the child node heights.
+        """
+        self.compute_block_width()
+        self.compute_block_x_position()
+        self.compute_block_y_position()
+
         mode = self.layout_mode(self.node)
         if mode == "block":
             self.layout_intermediate_block()
@@ -92,6 +131,8 @@ class Layout:
 
         for child in self.children:
             self.display_list.extend(child.display_list)
+
+        self.compute_block_height(mode)
 
     def layout_intermediate_block(self):
         previous = None
@@ -146,14 +187,11 @@ class Layout:
             word_width = font.measure(word)
 
             # Move to new line
-            if self.cursor_x + word_width > self.WIDTH - self.H_STEP:
+            if self.rel_x + word_width > self.block_width:
                 self.flush()
-                # self.cursor_x = self.H_STEP
-                # self.cursor_y += font.metrics("linespace") * 1.25
 
-            self.line.append((self.cursor_x, word, font))
-            # self.display_list.append((self.cursor_x, self.cursor_y, word, font))
-            self.cursor_x += word_width + font.measure(" ")
+            self.line.append((self.rel_x, word, font))
+            self.rel_x += word_width + font.measure(" ")
 
     def flush(self):
         """
@@ -167,24 +205,27 @@ class Layout:
             return
 
         # Get the metrics for all the fonts on the line
-        metrics = [font.metrics() for cursor_x, word, font in self.line]
+        metrics = [font.metrics() for rel_x, word, font in self.line]
 
         # Find the tallest word
         max_ascent = max([metric["ascent"] for metric in metrics])
 
-        # The line is then max_ascent below self.y—or actually a little more to account for the leading
-        baseline = self.cursor_y + 1.25 * max_ascent
+        # The line is then max_ascent below self.rel_y - or actually a little more to account for the leading
+        baseline = self.rel_y + 1.25 * max_ascent
 
         # Place each word relative to that line
-        for cursor_x, word, font in self.line:
-            cursor_y = baseline - font.metrics("ascent")
-            self.display_list.append((cursor_x, cursor_y, word, font))
+        for relative_x, word, font in self.line:
+            x = self.abs_x + relative_x
+            y = self.abs_y + baseline - font.metrics("ascent")
+            self.display_list.append((x, y, word, font))
 
         self.line = []
-        self.cursor_x = Layout.H_STEP
-        # 'cursor_y' must be far enough below baseline to account for the deepest descender
+
+        # Once line position is computed, reset the x, y coordinates
+        self.rel_x = 0
+        # 'rel_y' must be far enough below baseline to account for the deepest descender
         max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y = baseline + 1.25 * max_descent
+        self.rel_y = baseline + 1.25 * max_descent
 
 
 class DocumentLayout:
@@ -196,5 +237,10 @@ class DocumentLayout:
     def layout(self):
         child = Layout(self.node, self, None)
         self.children.append(child)
+
+        self.block_width = Layout.WIDTH - 2 * Layout.H_STEP
+        self.abs_x = Layout.H_STEP
+        self.abs_y = Layout.V_STEP
         child.layout()
+        self.block_height = child.block_width + 2 * Layout.V_STEP
         self.display_list = child.display_list
