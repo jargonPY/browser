@@ -1,6 +1,8 @@
 from typing import Tuple, Literal
 import tkinter.font
 from html_parser import Node, Element, Text
+from draw_commands import DrawCommand, DrawText, DrawRect
+from custom_types import *
 
 # A list of all the tags that describe parts of a page instead of formatting
 BLOCK_ELEMENTS = [
@@ -42,11 +44,6 @@ BLOCK_ELEMENTS = [
     "details",
     "summary",
 ]
-
-
-TextInLine = Tuple[float, str, tkinter.font.Font]
-
-TextStyle = Tuple[float, float, str, tkinter.font.Font]
 
 
 class Layout:
@@ -129,8 +126,8 @@ class Layout:
         for child in self.children:
             child.layout()
 
-        for child in self.children:
-            self.display_list.extend(child.display_list)
+        # for child in self.children:
+        #     self.display_list.extend(child.display_list)
 
         self.compute_block_height(mode)
 
@@ -227,6 +224,14 @@ class Layout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.rel_y = baseline + 1.25 * max_descent
 
+    def paint(self, display_list: list[DrawCommand]):
+        # display_list.extend(self.display_list)
+        # * Can also change the 'display_field' to contain 'DrawText' commands directly
+        for x, y, word, font in self.display_list:
+            display_list.append(DrawText(x, y, word, font))
+        for child in self.children:
+            child.paint(display_list)
+
 
 class DocumentLayout:
     def __init__(self, node: Node) -> None:
@@ -243,4 +248,6 @@ class DocumentLayout:
         self.abs_y = Layout.V_STEP
         child.layout()
         self.block_height = child.block_width + 2 * Layout.V_STEP
-        self.display_list = child.display_list
+
+    def paint(self, display_list: list[DrawCommand]):
+        self.children[0].paint(display_list)

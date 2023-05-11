@@ -4,6 +4,8 @@ import tkinter
 import tkinter.font
 from layout import Layout, DocumentLayout
 from html_parser import HTMLParser, print_tree
+from custom_types import TextStyle
+from draw_commands import DrawCommand
 
 
 class Browser:
@@ -20,27 +22,38 @@ class Browser:
         self.times_font = tkinter.font.Font(family="Times New Roman", size=16, weight="bold", slant="italic")
 
     def scroll_down(self, event):
-        self.scroll += self.SCROLL_STEP
+        # self.scroll += self.SCROLL_STEP
+        # Use the page height to avoid scrolling past the bottom of the page
+        max_y = self.doc_layout.block_height - self.HEIGHT
+        self.scroll = min(self.scroll + self.SCROLL_STEP, max_y)
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
-        for cursor_x, cursor_y, c, font in self.display_list:
-            # Avoid drawing characters that are outside the viewing window
-            if cursor_y > self.scroll + self.HEIGHT:
-                continue
+        # for cursor_x, cursor_y, c, font in self.display_list:
+        #     # Avoid drawing characters that are outside the viewing window
+        #     if cursor_y > self.scroll + self.HEIGHT:
+        #         continue
 
-            if cursor_y + self.V_STEP < self.scroll:
-                continue
+        #     if cursor_y + self.V_STEP < self.scroll:
+        #         continue
 
-            self.canvas.create_text(cursor_x, cursor_y - self.scroll, text=c, font=font, anchor="nw")
+        #     self.canvas.create_text(cursor_x, cursor_y - self.scroll, text=c, font=font, anchor="nw")
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + self.HEIGHT:
+                continue
+            if cmd.bottom < self.scroll:
+                continue
+            cmd.execute(self.scroll, self.canvas)
 
     def load(self, url: str):
         headers, body = request(url)
         html_tree = HTMLParser(body).parse()
         self.doc_layout = DocumentLayout(html_tree)
         self.doc_layout.layout()
-        self.display_list = self.doc_layout.display_list
+        # self.display_list = self.doc_layout.display_list
+        self.display_list: list[DrawCommand] = []
+        self.doc_layout.paint(self.display_list)
         self.draw()
 
     def load_local(self, file_name: str):
@@ -49,7 +62,9 @@ class Browser:
         html_tree = HTMLParser(html).parse()
         self.doc_layout = DocumentLayout(html_tree)
         self.doc_layout.layout()
-        self.display_list = self.doc_layout.display_list
+        self.display_list = []
+        self.doc_layout.paint(self.display_list)
+        # self.display_list = self.doc_layout.display_list
         self.draw()
 
 
