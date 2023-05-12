@@ -1,49 +1,19 @@
 from typing import Tuple, Literal
 import tkinter.font
-from html_parser import Node, Element, Text
+from utils.constants import BLOCK_ELEMENTS
+from browser_html.html_parser import Node, Element, Text
 from draw_commands import DrawCommand, DrawText, DrawRect
-from custom_types import *
+from utils.type_hints import *
 
-# A list of all the tags that describe parts of a page instead of formatting
-BLOCK_ELEMENTS = [
-    "html",
-    "body",
-    "article",
-    "section",
-    "nav",
-    "aside",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "hgroup",
-    "header",
-    "footer",
-    "address",
-    "p",
-    "hr",
-    "pre",
-    "blockquote",
-    "ol",
-    "ul",
-    "menu",
-    "li",
-    "dl",
-    "dt",
-    "dd",
-    "figure",
-    "figcaption",
-    "main",
-    "div",
-    "table",
-    "form",
-    "fieldset",
-    "legend",
-    "details",
-    "summary",
-]
+FONTS = {}
+
+
+def get_font(size, weight, slant):
+    key = (size, weight, slant)
+    if key not in FONTS:
+        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        FONTS[key] = font
+    return FONTS[key]
 
 
 class Layout:
@@ -59,21 +29,33 @@ class Layout:
         self.line: list[TextInLine] = []
         self.display_list: list[TextStyle] = []
 
+        self.abs_x: float = 0
+        self.abs_y: float = 0
         self.rel_x: float = 0  # offset from abs_x within the block
         self.rel_y: float = 0  # offset from abs_y within the block
         self.block_width: float = 0
         self.block_height: float = 0
 
-        self.weight: Literal["normal", "bold"] = "normal"
-        self.style: Literal["roman", "italic"] = "roman"
-        self.size = 16
+    def layout_mode(self, html_node: Node):
+        """
+        This method is used to determine which layout approach to use.
 
-    def layout_mode(self, tree_node: Node):
-        if isinstance(tree_node, Text):
+        1. For leaf blocks that contain text, lay out text horizontally (use recurse and flush).
+        2. For intermediate BlockLayouts with BlockLayout children, stack their children vertically (using layout_intermediate).
+        """
+        if isinstance(html_node, Text):
             return "inline"
-        elif tree_node.children:
-            if any([isinstance(child, Element) and child.tag in BLOCK_ELEMENTS for child in tree_node.children]):
+        elif html_node.children:
+            # ? What are the consequences of using 'block' mode for the situation described below?
+            """
+            There is one tricky case, where a node contains both block children like a <p> element but also text children like a
+            text node or a <b> element, in such a case 'block' mode is used, but it’s probably best to think of this as a
+            kind of error on the part of the web developer.
+            """
+            # Ex. <div> <p> Hello </p> </div>
+            if any([isinstance(child, Element) and child.tag in BLOCK_ELEMENTS for child in html_node.children]):
                 return "block"
+            # Ex. <div> <big> Hello </big> </div>
             else:
                 return "inline"
         else:
@@ -126,20 +108,10 @@ class Layout:
         for child in self.children:
             child.layout()
 
-        # for child in self.children:
-        #     self.display_list.extend(child.display_list)
-
         self.compute_block_height(mode)
 
     def layout_intermediate_block(self):
         previous = None
-        # ? Constructs a Layout for all children regardless if they are a "block" or "inline" element?
-        """
-        Our layout_mode function has to handle one tricky case, where a node contains both block children like
-        a <p> element but also text children like a text node or a <b> element. I’ve chosen to use block mode
-        in this case, but it’s probably best to think of this as a kind of error on the part of the web developer.
-        And just like with implicit tags in Chapter 4, we use a repair mechanism to make sense of the situation.
-        """
         for child in self.node.children:
             # Constructs a Layout from an Element node, using the previous child as the sibling argument
             next = Layout(child, self, previous)
@@ -148,46 +120,39 @@ class Layout:
             # Store the child ot be used as the previous sibling
             previous = next
 
-    def layout_leaf_block(self, tree_node: Node):
-        if isinstance(tree_node, Text):
-            self.text(tree_node)
-        elif isinstance(tree_node, Element):
-            self.open_tag(tree_node.tag)
-            for child in tree_node.children:
-                # ? Assumes that all children of a non-block ("inline") element are also non-block elements?
+    def layout_leaf_block(self, node: Node):
+        if isinstance(node, Text):
+            self.text(node)
+        elif isinstance(node, Element):
+            if node.tag == "br":
+                self.flush()
+
+            for child in node.children:
                 self.layout_leaf_block(child)
-            self.close_tag(tree_node.tag)
 
-    def open_tag(self, tag: str) -> None:
-        if tag == "i":
-            self.style = "italic"
-        elif tag == "b":
-            self.weight = "bold"
-        elif tag == "small":
-            self.size -= 2
-        elif tag == "big":
-            self.size += 4
+    def get_font(self, node: Node):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
 
-    def close_tag(self, tag: str) -> None:
-        if tag == "i":
-            self.style = "roman"
-        elif tag == "b":
-            self.weight = "normal"
-        elif tag == "small":
-            self.size += 2
-        elif tag == "big":
-            self.size -= 4
+        # Convert CSS "normal" to Tk "roman"
+        if style == "normal":
+            style = "roman"
+        # Convert CSS pixels to Tk points
+        size = int(float(node.style["font-size"][:-2]) * 0.75)
+        return get_font(size, weight, style)
 
-    def text(self, token: Text) -> None:
-        for word in token.text.split():
-            font = tkinter.font.Font(size=self.size, weight=self.weight, slant=self.style)
+    def text(self, node: Text) -> None:
+        color = node.style["color"]
+        for word in node.text.split():
+            # font = tkinter.font.Font(size=self.size, weight=self.weight, slant=self.style)
+            font = self.get_font(node)
             word_width = font.measure(word)
 
             # Move to new line
             if self.rel_x + word_width > self.block_width:
                 self.flush()
 
-            self.line.append((self.rel_x, word, font))
+            self.line.append((self.rel_x, word, font, color))
             self.rel_x += word_width + font.measure(" ")
 
     def flush(self):
@@ -195,14 +160,14 @@ class Layout:
         This method has three responsibilities:
         1. Align words along the line.
         2. Add all the words in the line to the display_list.
-        3. Update the x and y positions.
+        3. Update the rel_x and rel_y positions.
         """
         # ? checks if 'self.line' is empty?
         if not self.line:
             return
 
         # Get the metrics for all the fonts on the line
-        metrics = [font.metrics() for rel_x, word, font in self.line]
+        metrics = [font.metrics() for rel_x, word, font, color in self.line]
 
         # Find the tallest word
         max_ascent = max([metric["ascent"] for metric in metrics])
@@ -211,10 +176,10 @@ class Layout:
         baseline = self.rel_y + 1.25 * max_ascent
 
         # Place each word relative to that line
-        for relative_x, word, font in self.line:
+        for relative_x, word, font, color in self.line:
             x = self.abs_x + relative_x
             y = self.abs_y + baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
+            self.display_list.append((x, y, word, font, color))
 
         self.line = []
 
@@ -225,10 +190,24 @@ class Layout:
         self.rel_y = baseline + 1.25 * max_descent
 
     def paint(self, display_list: list[DrawCommand]):
+        """
+        This method collect all the draw commands into the 'display_list'.
+
+        Then 'Browser.draw()' can sequentially iterate over the commands and draw each command
+        to the screen.
+        """
         # display_list.extend(self.display_list)
         # * Can also change the 'display_field' to contain 'DrawText' commands directly
-        for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
+        for x, y, word, font, color in self.display_list:
+            display_list.append(DrawText(x, y, word, font, color))
+
+        if isinstance(self.node, Element):
+            bg_color = self.node.style.get("background-color", "transparent")
+            if bg_color != "transparent":
+                x2, y2 = self.abs_x + self.block_width, self.abs_y + self.block_height
+                rect = DrawRect(self.abs_x, self.abs_y, x2, y2, bg_color)
+                display_list.append(rect)
+
         for child in self.children:
             child.paint(display_list)
 

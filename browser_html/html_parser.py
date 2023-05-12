@@ -1,91 +1,47 @@
-from abc import ABC
-from typing import List, Union
-
-
-class Node(ABC):
-    def __init__(self, parent: Union["Node", None]) -> None:
-        self.parent = parent
-        self.children: List[Node] = []
-
-
-class Text(Node):
-    def __init__(self, text: str, parent: Node | None) -> None:
-        self.text = text
-        # todo conver to 'super(parent)' call to initialize 'parent' and 'children'
-        self.parent = parent
-        # Even though 'Text' nodes never have children, this is added for consistency, to avoid 'isinstance' calls throughout the code
-        self.children: List[Node] = []
-
-    def __repr__(self) -> str:
-        return repr(self.text)
-
-
-class Element(Node):
-    def __init__(self, tag: str, attributes: List[str], parent: Node | None) -> None:
-        self.tag = tag
-        self.attributes = attributes
-        self.parent = parent
-        self.children: List[Node] = []
-
-    def __repr__(self) -> str:
-        return f"< {self.tag} >"
-
-
-def print_tree(node: Node, indent=0):
-    print(" " * indent, node)
-    for child in node.children:
-        print_tree(child, indent + 2)
+from utils.utils import print_tree
+from utils.constants import SELF_CLOSING_TAGS
+from browser_html.html_nodes import *
 
 
 class HTMLParser:
-    SELF_CLOSING_TAGS = [
-        "area",
-        "base",
-        "br",
-        "col",
-        "embed",
-        "hr",
-        "img",
-        "input",
-        "link",
-        "meta",
-        "param",
-        "source",
-        "track",
-        "wbr",
-    ]
-
     def __init__(self, body: str) -> None:
         self.body = body
-        self.unfinished: List[Node] = []
+        self.unfinished: list[Node] = []
 
     def parse(self):
+        """
+        Return the text-not-tags content of the HTML document.
+        """
         text = ""
         in_tag = False
         for c in self.body:
             if c == "<":
                 in_tag = True
+                # Parse 'text' (which in this case is a sequence of characters outside a tag) as a 'Text' node
                 if text:
-                    self.add_text(text)
+                    self.parse_raw_text(text)
                 text = ""
             elif c == ">":
                 in_tag = False
-                self.add_tag(text)
+                # Parse 'text' as a tag and its contents
+                self.parse_tag(text)
                 text = ""
             else:
                 text += c
         """
         At the end of the loop, this dumps any accumulated text as a Text object.
         Otherwise, if you never saw an angle bracket, you’d return an empty list
-        of tokens. But unfinished tags, like in Hi!<hr, are thrown out.
+        of tokens (This allows you to parse an HTML document that doesn't contain
+        any tags as a basic document with text). But unfinished tags,
+        like in Hi!<hr, are thrown out.
         """
         if not in_tag and text:
-            self.add_text(text)
+            self.parse_raw_text(text)
         return self.finish()
 
-    def add_text(self, text: str):
+    def parse_raw_text(self, text: str):
         """
-        A 'Text' node is appended as a child of the last unfinished (not closed) node.
+        A 'Text' node is appended as a child of the last unfinished (i.e. not closed) node.
         """
         # Skip whitespace-only text nodes
         if text.isspace():
@@ -95,8 +51,15 @@ class HTMLParser:
         node = Text(text, parent)
         parent.children.append(node)
 
-    def add_tag(self, tag: str):
-        tag, attributes = self.get_attributes(tag)
+    def parse_tag(self, tag_contents: str):
+        """
+        tag_contents: a string containing all the text between and '<' and '>'.
+
+        Example:
+           Raw HTML tag: <div style="font:normal;">
+           tag_contents: div style="font:normal;"
+        """
+        tag, attributes = self.get_attributes(tag_contents)
         # Throw away the '<!doctype html>' tag and comments
         if tag.startswith("!"):
             return
@@ -109,7 +72,7 @@ class HTMLParser:
             parent = self.unfinished[-1]
             parent.children.append(node)
         # Auto-close special tags
-        elif tag in HTMLParser.SELF_CLOSING_TAGS:
+        elif tag in SELF_CLOSING_TAGS:
             parent = self.unfinished[-1]
             node = Element(tag, attributes, parent)
             parent.children.append(node)
@@ -143,7 +106,7 @@ class HTMLParser:
 
     def finish(self):
         if len(self.unfinished) == 0:
-            self.add_tag("html")
+            self.parse_tag("html")
         # Turn the incomplete three into a complete tree by closing unfinished nodes
         while len(self.unfinished) > 1:
             node = self.unfinished.pop()
