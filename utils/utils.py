@@ -1,7 +1,15 @@
+from typing import TypeVar, Protocol
 from browser_html.html_nodes import Node
 
 
-def tree_to_list(tree: Node, list_of_nodes: list[Node]) -> list[Node]:
+class Tree(Protocol):
+    children: list["Tree"]
+
+
+T = TypeVar("T", bound="Tree")
+
+
+def tree_to_list(tree: Tree, list_of_nodes: list[Tree]) -> list[Tree]:
     list_of_nodes.append(tree)
     for child in tree.children:
         tree_to_list(child, list_of_nodes)

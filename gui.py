@@ -1,105 +1,97 @@
 import sys
 import tkinter
 import tkinter.font
-from layout import Layout, DocumentLayout
-from browser_html.html_parser import HTMLParser, print_tree, Node, Element
-from draw_commands import DrawCommand
-from browser_css.css_parser import CSSParser
-from browser_css.css_rules import cascade_priority, add_css_to_html_node
-from network import request, resolve_url
-from utils.utils import tree_to_list
+from layout import get_font
+from browser_tab import Tab
 
 
 class Browser:
     WIDTH, HEIGHT = 800, 600
     H_STEP, V_STEP = 13, 18
     SCROLL_STEP = 100
+    # Reserved space for the browser chrome
+    CHROME_PX = 100
 
     def __init__(self) -> None:
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(self.window, width=self.WIDTH, height=self.HEIGHT, bg="white")
         self.canvas.pack()
-        self.scroll = 0
-        self.window.bind("<Down>", self.scroll_down)
-        self.times_font = tkinter.font.Font(family="Times New Roman", size=16, weight="bold", slant="italic")
+        self.window.bind("<Down>", self.handle_down)
+        self.window.bind("<Button-1>", self.handle_click)
 
-        with open("./browser_css/browser_defaults.css", "r") as file:
-            file_content = file.read()
-            self.default_style_sheet = CSSParser(file_content).parse_css_file()
+        self.tabs: list[Tab] = []
+        self.active_tab: int = 0
 
-    def scroll_down(self, event):
-        # self.scroll += self.SCROLL_STEP
-        # Use the page height to avoid scrolling past the bottom of the page
-        max_y = self.doc_layout.block_height - self.HEIGHT
-        self.scroll = min(self.scroll + self.SCROLL_STEP, max_y)
+    def handle_down(self, event) -> None:
+        self.tabs[self.active_tab].scroll_down()
         self.draw()
 
-    def draw(self):
-        self.canvas.delete("all")
-        # for cursor_x, cursor_y, c, font in self.display_list:
-        #     # Avoid drawing characters that are outside the viewing window
-        #     if cursor_y > self.scroll + self.HEIGHT:
-        #         continue
-
-        #     if cursor_y + self.V_STEP < self.scroll:
-        #         continue
-
-        #     self.canvas.create_text(cursor_x, cursor_y - self.scroll, text=c, font=font, anchor="nw")
-        for cmd in self.display_list:
-            if cmd.top > self.scroll + self.HEIGHT:
-                continue
-            if cmd.bottom < self.scroll:
-                continue
-            cmd.execute(self.scroll, self.canvas)
-
-    def load(self, url: str):
-        headers, body = request(url)
-        html_tree = HTMLParser(body).parse()
-        self.doc_layout = DocumentLayout(html_tree)
-        self.doc_layout.layout()
-        # self.display_list = self.doc_layout.display_list
-        self.display_list: list[DrawCommand] = []
-        self.doc_layout.paint(self.display_list)
+    def handle_click(self, event) -> None:
+        """
+        When the user clicks on the browser chrome (the if branch), the browser handles it directly, but clicks on
+        the page content (the else branch) are still forwarded to the active tab, subtracting CHROME_PX to fix up the coordinates.
+        """
+        if event.y < self.CHROME_PX:
+            if 40 <= event.x < 40 + 80 * len(self.tabs) and 0 <= event.y < 40:
+                self.active_tab = int((event.x - 40) / 80)
+            # Handle "add new tab" button
+            elif 10 <= event.x < 30 and 10 <= event.y < 30:
+                # self.load_url("https://browser.engineering/")
+                self.load_file("./examples/parse.html")
+            # Handle "go back" button
+            elif 10 <= event.x < 35 and 50 <= event.y < 90:
+                self.tabs[self.active_tab].go_back()
+        else:
+            self.tabs[self.active_tab].click(event.x, event.y - self.CHROME_PX)
         self.draw()
 
-    def load_local(self, file_name: str):
-        with open(file_name, "r") as file:
-            html = file.read()
+    def draw(self) -> None:
+        # ? Is it no longer necessary to erase from the canvas?
+        # self.canvas.delete("all")
+        self.tabs[self.active_tab].draw(self.canvas)
+        self.canvas.create_rectangle(0, 0, self.WIDTH, self.CHROME_PX, fill="white", outline="black")
 
-        html_tree = HTMLParser(html).parse()
+        tab_font = get_font(20, "normal", "roman")
+        for i, tab in enumerate(self.tabs):
+            tab_name = f"Tab {i}"
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
 
-        # ? Why do a shallow copy of the list?
-        rules = self.default_style_sheet.copy()
+            # Draw a border on the left and right and then draw the tab name
+            self.canvas.create_line(x1, 0, x1, 40, fill="black")
+            self.canvas.create_line(x2, 0, x2, 40, fill="black")
+            self.canvas.create_text(x1 + 10, 10, anchor="nw", text=tab_name, font=tab_font, fill="black")
 
-        links = [
-            node.attributes["href"]
-            for node in tree_to_list(html_tree, [])
-            if isinstance(node, Element)
-            and node.tag == "link"
-            and "href" in node.attributes
-            and node.attributes.get("rel") == "stylesheet"
-        ]
+            # To identify which tab is the active tab, we’ve got to make that file folder shape with the current tab sticking up
+            if i == self.active_tab:
+                self.canvas.create_line(0, 40, x1, 40, fill="black")
+                self.canvas.create_line(x2, 40, self.WIDTH, 40, fill="black")
 
-        for link in links:
-            try:
-                header, body = request(resolve_url(link, url))
-            # todo make the exception more sepcific
-            except:
-                continue
-            rules.extend(CSSParser(body).parse_css_file())
+            # Draw a button for creating new tabs
+            button_font = get_font(30, "normal", "roman")
+            self.canvas.create_rectangle(10, 10, 30, 30, outline="black", width=1)
+            self.canvas.create_text(11, 0, anchor="nw", text="+", font=button_font, fill="black")
 
-        """
-        Before sorting rules, it is in file order. Since Python’s sorted function keeps the
-        relative order of things when possible, file order thus acts as a tie breaker, as it should.
-        """
-        sorted_rules = sorted(rules, key=cascade_priority)
-        add_css_to_html_node(html_tree, sorted_rules)
+            # Draw an address bar
+            self.canvas.create_rectangle(40, 50, self.WIDTH - 10, 90, outline="black", width=1)
+            url = self.tabs[self.active_tab].url
+            self.canvas.create_text(55, 55, anchor="nw", text=url, font=button_font, fill="black")
 
-        self.doc_layout = DocumentLayout(html_tree)
-        self.doc_layout.layout()
-        self.display_list = []
-        self.doc_layout.paint(self.display_list)
-        # self.display_list = self.doc_layout.display_list
+            # Draw a back button
+            self.canvas.create_rectangle(10, 50, 35, 90, outline="black", width=1)
+            self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill="black")
+
+    def load_url(self, url: str) -> None:
+        new_tab = Tab()
+        new_tab.load_url(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
+        self.draw()
+
+    def load_file(self, file_name: str) -> None:
+        new_tab = Tab()
+        new_tab.load_file(file_name)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
         self.draw()
 
 
@@ -109,6 +101,6 @@ class Browser:
 
 if __name__ == "__main__":
     url = sys.argv[1]
-    # Browser().load(url)
-    Browser().load_local("./examples/parse.html")
+    Browser().load_url(url)
+    # Browser().load_file("./examples/parse.html")
     tkinter.mainloop()

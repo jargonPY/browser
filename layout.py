@@ -1,9 +1,47 @@
-from typing import Tuple, Literal
+from typing import Tuple, Literal, Union, Any, Type, TypeVar
 import tkinter.font
 from utils.constants import BLOCK_ELEMENTS
 from browser_html.html_parser import Node, Element, Text
 from draw_commands import DrawCommand, DrawText, DrawRect
 from utils.type_hints import *
+
+from abc import ABC, abstractmethod
+
+# * Type is used for representing class types in MyPy, while TypeVar is used for defining type variables.
+# T = TypeVar("T", bound=LayoutClass)
+# T = TypeVar("T", bound="LayoutClass")
+
+
+class LayoutClass(ABC):
+    def __init__(self, node: Node, parent: "LayoutClass", previous_sibling: Union["T", None]) -> None:
+        self.node = node
+        self.parent = parent
+        self.previous_sibling = previous_sibling
+        # todo rework the typing here
+        self.children: list[Any] = []
+
+        self.abs_x: float = 0
+        self.abs_y: float = 0
+
+        self.block_width: float = 0
+        self.block_height: float = 0
+
+    @abstractmethod
+    def layout(self) -> None:
+        pass
+
+    @abstractmethod
+    def paint(self, display_list: list[DrawCommand]) -> None:
+        pass
+
+
+T = TypeVar("T", bound=LayoutClass)
+
+
+"""
+cursor_x --> rel_x
+x        --> abs_x
+"""
 
 FONTS = {}
 
@@ -16,25 +54,116 @@ def get_font(size, weight, slant):
     return FONTS[key]
 
 
-class Layout:
+class LineLayout(LayoutClass):
+    def __init__(self, node: Node, parent: "LayoutClass", previous_sibling: Union["LineLayout", None]) -> None:
+        super().__init__(node, parent, previous_sibling)
+        # self.node = node
+        # self.parent = parent
+        # self.previous_sibling = previous_sibling
+        self.children: list["TextLayout"] = []
+
+        # self.abs_x: float = 0
+        # self.abs_y: float = 0
+
+        # self.block_width: float = 0
+        # self.block_height: float = 0
+
+    def layout(self) -> None:
+        """
+        Lines stack vertically and take up their parent’s full width, so computing abs_x, abs_y
+        and block_width is the same as for the other boxes.
+        """
+        self.block_width = self.parent.block_width
+        self.abs_x = self.parent.abs_x
+
+        if self.previous_sibling is not None:
+            self.abs_y = self.previous_sibling.abs_y + self.previous_sibling.block_height
+        else:
+            self.abs_y = self.parent.abs_y
+
+        # Before computing block_height, lay out each word
+        for word in self.children:
+            word.layout()
+
+        """
+        Note that this code is reading from a font field on each word and writing to each word’s y field.
+        That means that inside TextLayout’s layout method, we need to compute x, width, and height, but
+        also font, and not y. Remember that for later.
+        """
+        max_ascent = max([word.font.metrics("ascent") for word in self.children])
+        baseline = self.abs_y + 1.25 * max_ascent
+        for word in self.children:
+            word.abs_y = baseline - word.font.metrics("ascent")
+        max_descent = max([word.font.metrics("descent") for word in self.children])
+
+        self.block_height = 1.25 * (max_ascent + max_descent)
+
+    def paint(self, display_list: list[DrawCommand]) -> None:
+        for child in self.children:
+            child.paint(display_list)
+
+
+class TextLayout(LayoutClass):
+    def __init__(
+        self, node: Node, parent: "LayoutClass", previous_sibling: Union["TextLayout", None], word: str
+    ) -> None:
+        super().__init__(node, parent, previous_sibling)
+        # self.node = node
+        # self.parent = parent
+        # self.previous_sibling = previous_sibling
+        self.children: list["LayoutClass"] = []
+        self.word = word
+        self.font: tkinter.font.Font = tkinter.font.Font()
+
+        # self.abs_x: float = 0
+        # self.abs_y: float = 0
+
+        # self.block_width: float = 0
+        # self.block_height: float = 0
+
+    def layout(self) -> None:
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal":
+            style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * 0.75)
+        self.font = get_font(size, weight, style)
+
+        # Do not set self.abs_y!
+        self.block_width = self.font.measure(self.word)
+
+        if self.previous_sibling is not None:
+            space = self.previous_sibling.font.measure(" ")
+            self.abs_x = self.previous_sibling.abs_x + space + self.previous_sibling.block_width
+        else:
+            self.abs_x = self.parent.abs_x
+
+        self.block_height = self.font.metrics("linespace")
+
+    def paint(self, display_list: list[DrawCommand]) -> None:
+        color = self.node.style["color"]
+        display_list.append(DrawText(self.abs_x, self.abs_y, self.word, self.font, color))
+
+
+class Layout(LayoutClass):
     WIDTH, HEIGHT = 800, 600
     H_STEP, V_STEP = 13, 18
 
-    def __init__(self, node: Node, parent: "Layout", previous_sibling: "Layout") -> None:
-        self.node = node
-        self.parent = parent
-        self.previous_sibling = previous_sibling
-        self.children: list[Layout] = []
+    def __init__(self, node: Node, parent: "Layout", previous_sibling: Union["Layout", None]) -> None:
+        super().__init__(node, parent, previous_sibling)
+        # self.node = node
+        # self.parent = parent
+        # self.previous_sibling = previous_sibling
+        self.children: list["LayoutClass"] = []
 
-        self.line: list[TextInLine] = []
-        self.display_list: list[TextStyle] = []
+        self.previous_word: "TextLayout" | None = None
 
-        self.abs_x: float = 0
-        self.abs_y: float = 0
+        # self.abs_x: float = 0
+        # self.abs_y: float = 0
         self.rel_x: float = 0  # offset from abs_x within the block
         self.rel_y: float = 0  # offset from abs_y within the block
-        self.block_width: float = 0
-        self.block_height: float = 0
+        # self.block_width: float = 0
+        # self.block_height: float = 0
 
     def layout_mode(self, html_node: Node):
         """
@@ -77,13 +206,20 @@ class Layout:
         else:
             self.abs_y = self.parent.abs_y
 
-    def compute_block_height(self, mode: Literal["block", "inline"]):
-        #  A block that contains other blocks should be tall enough to contain all of its children, so its height should be the sum of its children’s heights
-        if mode == "block":
-            self.block_height = sum([child.block_height for child in self.children])
-        # A block that contains text doesn’t have children; instead, it needs to be tall enough to contain all its text
-        else:
-            self.block_height = self.rel_y
+    # def compute_block_height(self, mode: Literal["block", "inline"]):
+    #     #  A block that contains other blocks should be tall enough to contain all of its children, so its height should be the sum of its children’s heights
+    #     if mode == "block":
+    #         self.block_height = sum([child.block_height for child in self.children])
+    #     # A block that contains text doesn’t have children; instead, it needs to be tall enough to contain all its text
+    #     else:
+    #         self.block_height = self.rel_y
+
+    def compute_block_height(self) -> None:
+        """
+        Compute the height of a paragraph of text by summing the height of its lines, so this part of the code
+        no longer needs to be different depending on the layout mode.
+        """
+        self.block_height = sum([child.block_height for child in self.children])
 
     def layout(self):
         """
@@ -101,14 +237,17 @@ class Layout:
         if mode == "block":
             self.layout_intermediate_block()
         else:
+            self.new_line()
             self.layout_leaf_block(self.node)
-            # As usual with buffers, need to make sure the buffer is flushed once all tokens are processed
-            self.flush()
+
+            # self.layout_leaf_block(self.node)
+            # # As usual with buffers, need to make sure the buffer is flushed once all tokens are processed
+            # self.flush()
 
         for child in self.children:
             child.layout()
 
-        self.compute_block_height(mode)
+        self.compute_block_height()
 
     def layout_intermediate_block(self):
         previous = None
@@ -125,7 +264,7 @@ class Layout:
             self.text(node)
         elif isinstance(node, Element):
             if node.tag == "br":
-                self.flush()
+                self.new_line()
 
             for child in node.children:
                 self.layout_leaf_block(child)
@@ -142,52 +281,34 @@ class Layout:
         return get_font(size, weight, style)
 
     def text(self, node: Text) -> None:
-        color = node.style["color"]
         for word in node.text.split():
-            # font = tkinter.font.Font(size=self.size, weight=self.weight, slant=self.style)
             font = self.get_font(node)
             word_width = font.measure(word)
 
             # Move to new line
             if self.rel_x + word_width > self.block_width:
-                self.flush()
+                self.new_line()
 
-            self.line.append((self.rel_x, word, font, color))
+            # The LineLayouts are children of the BlockLayout, so the current line can be found at the end of the children array
+            line = self.children[-1]
+            text = TextLayout(node, line, self.previous_word, word)
+            line.children.append(text)
+            self.previous_word = text
+
             self.rel_x += word_width + font.measure(" ")
 
-    def flush(self):
-        """
-        This method has three responsibilities:
-        1. Align words along the line.
-        2. Add all the words in the line to the display_list.
-        3. Update the rel_x and rel_y positions.
-        """
-        # ? checks if 'self.line' is empty?
-        if not self.line:
-            return
-
-        # Get the metrics for all the fonts on the line
-        metrics = [font.metrics() for rel_x, word, font, color in self.line]
-
-        # Find the tallest word
-        max_ascent = max([metric["ascent"] for metric in metrics])
-
-        # The line is then max_ascent below self.rel_y - or actually a little more to account for the leading
-        baseline = self.rel_y + 1.25 * max_ascent
-
-        # Place each word relative to that line
-        for relative_x, word, font, color in self.line:
-            x = self.abs_x + relative_x
-            y = self.abs_y + baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font, color))
-
-        self.line = []
-
-        # Once line position is computed, reset the x, y coordinates
+    def new_line(self) -> None:
+        self.previous_word = None
         self.rel_x = 0
-        # 'rel_y' must be far enough below baseline to account for the deepest descender
-        max_descent = max([metric["descent"] for metric in metrics])
-        self.rel_y = baseline + 1.25 * max_descent
+        last_line = self.children[-1] if self.children else None
+
+        # todo replace assertion with a different type checking mechanism
+        assert (
+            isinstance(last_line, LineLayout) or last_line is None
+        ), f"Expected 'last_line' to be of type 'LineLayout' or 'None', received {type(last_line)} instead"
+
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
 
     def paint(self, display_list: list[DrawCommand]):
         """
@@ -196,10 +317,6 @@ class Layout:
         Then 'Browser.draw()' can sequentially iterate over the commands and draw each command
         to the screen.
         """
-        # display_list.extend(self.display_list)
-        # * Can also change the 'display_field' to contain 'DrawText' commands directly
-        for x, y, word, font, color in self.display_list:
-            display_list.append(DrawText(x, y, word, font, color))
 
         if isinstance(self.node, Element):
             bg_color = self.node.style.get("background-color", "transparent")

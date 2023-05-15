@@ -2,6 +2,8 @@ from typing import Dict, Tuple
 from browser_css.css_selectors import *
 from utils.type_hints import CSSPropertyName, CSSPropertyValue, CSSProperties, CSSRule
 
+# todo fix parsing of whitespace between semicolon (ex. "font-weight: 400px;" instead of "font-weight:400px;")
+
 
 class CSSParser:
     def __init__(self, text: str) -> None:
