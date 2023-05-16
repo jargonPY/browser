@@ -35,6 +35,26 @@ class TagSelector(Selector):
         return False
 
 
+class ClassSelector(Selector):
+    def __init__(self, class_name: str) -> None:
+        self.class_name = class_name
+        self.prioroty = 10
+
+    def matches(self, node: Node) -> bool:
+        """
+        Tests whether the selector matches a specific element.
+        """
+        return isinstance(node, Element) and self.class_name == node.css_class_name
+
+    def __repr__(self) -> str:
+        return f"ClassSelector({self.class_name})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ClassSelector):
+            return self.class_name == other.class_name and self.prioroty == other.prioroty
+        return False
+
+
 class DescendantSelector(Selector):
     def __init__(self, ancestor: Selector, descendant: Selector) -> None:
         self.ancestor = ancestor

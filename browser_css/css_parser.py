@@ -90,11 +90,14 @@ class CSSParser:
         return pairs
 
     def selector(self) -> Selector:
-        out: Selector = TagSelector(self.word().lower())
+        selector_name = self.word().lower()
+        # out: Selector = TagSelector(selector_name)
+        out: Selector = ClassSelector(selector_name) if selector_name.startswith(".") else TagSelector(selector_name)
         self.white_space()
         while not self.is_end() and self.text[self.index] != "{":
             tag = self.word()
-            descendant = TagSelector(tag.lower())
+            # descendant = TagSelector(tag.lower())
+            descendant = ClassSelector(selector_name) if selector_name.startswith(".") else TagSelector(selector_name)
             out = DescendantSelector(out, descendant)
             self.white_space()
         return out

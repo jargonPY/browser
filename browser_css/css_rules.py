@@ -90,6 +90,11 @@ def add_css_to_html_node(node: Node, rules: list["CSSRule"]) -> None:
                 continue
             node.style[property] = computed_value
 
+    # Add class attribute rules
+    if isinstance(node, Element) and "class" in node.attributes:
+        # todo need to iterate over every rule and add the ones that match the class_name
+        node.css_class_name = node.attributes["class"]
+
     # Add style attribute rules
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()

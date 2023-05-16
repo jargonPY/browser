@@ -165,30 +165,45 @@ class Layout(LayoutClass):
         # self.block_width: float = 0
         # self.block_height: float = 0
 
-    def layout_mode(self, html_node: Node):
-        """
-        This method is used to determine which layout approach to use.
+    # def layout_mode(self, html_node: Node):
+    #     """
+    #     This method is used to determine which layout approach to use.
 
-        1. For leaf blocks that contain text, lay out text horizontally (use recurse and flush).
-        2. For intermediate BlockLayouts with BlockLayout children, stack their children vertically (using layout_intermediate).
-        """
+    #     1. For leaf blocks that contain text, lay out text horizontally (use recurse and flush).
+    #     2. For intermediate BlockLayouts with BlockLayout children, stack their children vertically (using layout_intermediate).
+    #     """
+    #     if isinstance(html_node, Text):
+    #         return "inline"
+    #     elif html_node.children:
+    #         # ? What are the consequences of using 'block' mode for the situation described below?
+    #         """
+    #         There is one tricky case, where a node contains both block children like a <p> element but also text children like a
+    #         text node or a <b> element, in such a case 'block' mode is used, but it’s probably best to think of this as a
+    #         kind of error on the part of the web developer.
+    #         """
+    #         # Ex. <div> <p> Hello </p> </div>
+    #         if any([isinstance(child, Element) and child.tag in BLOCK_ELEMENTS for child in html_node.children]):
+    #             return "block"
+    #         # Ex. <div> <big> Hello </big> </div>
+    #         else:
+    #             return "inline"
+    #     else:
+    #         return "block"
+
+    def layout_mode(self, html_node: Node):  # -> Literal["block", "inline"]:
         if isinstance(html_node, Text):
             return "inline"
-        elif html_node.children:
-            # ? What are the consequences of using 'block' mode for the situation described below?
-            """
-            There is one tricky case, where a node contains both block children like a <p> element but also text children like a
-            text node or a <b> element, in such a case 'block' mode is used, but it’s probably best to think of this as a
-            kind of error on the part of the web developer.
-            """
-            # Ex. <div> <p> Hello </p> </div>
-            if any([isinstance(child, Element) and child.tag in BLOCK_ELEMENTS for child in html_node.children]):
-                return "block"
-            # Ex. <div> <big> Hello </big> </div>
+
+        if isinstance(html_node, Element):
+            if "display" in html_node.style:
+                return html_node.style["display"]
             else:
+                # todo need to skip tags that are not rendered (ex. iframe, script)
+                if len(html_node.children) == 0:
+                    print("Found Inline Node with No Children Nodes: ", html_node.tag)
                 return "inline"
-        else:
-            return "block"
+
+        # return "block"
 
     def compute_block_width(self):
         # Blocks are as wide as their parents

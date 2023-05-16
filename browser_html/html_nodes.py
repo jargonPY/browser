@@ -33,6 +33,7 @@ class Element(Node):
         self.parent = parent
         self.children: list[Node] = []
         self.style: "CSSProperties" = {}
+        self.css_class_name = ""
 
     def __repr__(self) -> str:
         return f"< {self.tag} >"

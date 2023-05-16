@@ -45,7 +45,7 @@ def request(url: str):
     url = url[len("http://") :]  # Remove the http portion
 
     # Handle http://www.google.com/index.html
-    if url.count("/") > 2:
+    if url.count("/") > 0:
         host, path = url.split("/", 1)
         path = "/" + path
     # Handle http://www.google.com
@@ -59,6 +59,8 @@ def request(url: str):
     if ":" in host:
         host, custom_port = host.split(":", 1)
         port = int(custom_port)
+
+    # print("HOST: ", host, " PATH: ", path)
 
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
@@ -83,8 +85,8 @@ def request(url: str):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
-    for key, item in headers.items():
-        print("KEY: ", key, " ITEM: ", item)
+    # for key, item in headers.items():
+    #     print("KEY: ", key, " ITEM: ", item)
 
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
