@@ -1,12 +1,12 @@
 import sys
 import tkinter
 import tkinter.font
-from layout import Layout, DocumentLayout
+from browser_layout.layout import Layout, DocumentLayout
 from browser_html.html_parser import HTMLParser, print_tree, Node, Element
 from draw_commands import DrawCommand
 from browser_css.css_parser import CSSParser
 from browser_css.css_rules import cascade_priority, add_css_to_html_node
-from network import request, resolve_url
+from browser_network.network import request, resolve_url
 from utils.utils import tree_to_list
 from browser_html.html_nodes import Text
 
@@ -70,6 +70,7 @@ class Tab:
             element = element.parent
 
     def draw(self, canvas: tkinter.Canvas):
+        canvas.delete("all")
         for cmd in self.display_list:
             if cmd.top > self.scroll + self.HEIGHT - self.CHROME_PX:
                 continue

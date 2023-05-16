@@ -72,7 +72,7 @@ def test_body(css_parser):
 
 
 def test_selector(css_parser):
-    assert repr(css_parser.selector()) == "TagSelector(body)"
+    assert css_parser.selector() == TagSelector("body")
 
 
 def test_parse_css_file(css_parser):
