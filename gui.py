@@ -1,6 +1,7 @@
 import sys
 import tkinter
 import tkinter.font
+from typing import Literal
 from browser_layout.layout import get_font
 from browser_tab import Tab
 from browser_chrome.back_button import BackButton
@@ -20,8 +21,14 @@ class Browser:
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(self.window, width=self.WIDTH, height=self.HEIGHT, bg="white")
         self.canvas.pack()
+        self.window.bind("<Up>", self.handle_up)
         self.window.bind("<Down>", self.handle_down)
         self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Key>", self.handle_key)
+        self.window.bind("<Return>", self.handle_enter)
+        self.window.bind("<BackSpace>", self.handle_backspace)
+        self.window.bind("<Control-v>", self.handle_paste)
+        self.window.bind("<Command-v>", self.handle_paste)
 
         self.tabs: list[Tab] = []
         self.active_tab: int = 0
@@ -30,6 +37,41 @@ class Browser:
         self.address_bar = AddressBar()
         self.new_tab_button = NewTabButton()
         self.back_button = BackButton()
+
+        self.focus: Literal["address bar"] | None = None
+        self.address_bar_value = ""
+
+    def handle_paste(self, event: tkinter.Event):
+        if self.focus == "address bar":
+            self.address_bar_value = self.window.clipboard_get()
+            self.draw()
+
+    def handle_backspace(self, event: tkinter.Event):
+        if self.focus == "address bar":
+            self.address_bar_value = self.address_bar_value[:-1]
+            self.draw()
+
+    def handle_enter(self, event: tkinter.Event):
+        if self.focus == "address bar":
+            self.tabs[self.active_tab].load_url(self.address_bar_value)
+            self.focus = None
+            self.draw()
+
+    def handle_key(self, event: tkinter.Event):
+        if len(event.char) == 0:
+            return
+
+        # Ignore characters that represent a non-character key (below 0x20) or are outside the ASCII range (above 0x7F)
+        if not (0x20 <= ord(event.char) < 0x7F):
+            return
+
+        if self.focus == "address bar":
+            self.address_bar_value += event.char
+            self.draw()
+
+    def handle_up(self, event: tkinter.Event) -> None:
+        self.tabs[self.active_tab].scroll_up()
+        self.draw()
 
     def handle_down(self, event: tkinter.Event) -> None:
         self.tabs[self.active_tab].scroll_down()
@@ -40,6 +82,9 @@ class Browser:
         When the user clicks on the browser chrome (the if branch), the browser handles it directly, but clicking on
         the page content (the else branch) are still forwarded to the active tab, subtracting CHROME_PX to fix up the coordinates.
         """
+        # Clicking outside of an element, clears the focus
+        self.focus = None
+
         if event.y < self.CHROME_PX:
             if self.tab_header.is_clicked(event.x, event.y):
                 self.active_tab = int((event.x - self.tab_header.offset_x) / self.tab_header.tab_width)
@@ -50,11 +95,16 @@ class Browser:
 
             elif self.back_button.is_clicked(event.x, event.y):
                 self.tabs[self.active_tab].go_back()
+
+            elif 50 <= event.x < self.address_bar.end_x_pos - 10 and 50 <= event.y < 90:
+                self.focus = "address bar"
+                self.address_bar_value = ""
         else:
             self.tabs[self.active_tab].click(event.x, event.y - self.CHROME_PX)
         self.draw()
 
     def draw(self) -> None:
+        # self.canvas.delete("all")
         active_tab = self.tabs[self.active_tab]
         button_font = get_font(30, "normal", "roman")
 
@@ -66,7 +116,13 @@ class Browser:
         self.new_tab_button.draw(self.canvas, button_font)
         self.tab_header.draw(self.canvas, self.tabs, self.active_tab)
         self.back_button.draw(self.canvas)
-        self.address_bar.draw(self.canvas, active_tab.url, button_font)
+
+        if self.focus == "address bar":
+            self.address_bar.draw(self.canvas, self.address_bar_value, self.focus, self.address_bar_value, button_font)
+            w = button_font.measure(self.address_bar_value)
+            self.canvas.create_line(55 + w, 55, 55 + w, 85, fill="black")
+        else:
+            self.address_bar.draw(self.canvas, active_tab.url, self.focus, self.address_bar_value, button_font)
 
     def load_url(self, url: str) -> None:
         new_tab = Tab()

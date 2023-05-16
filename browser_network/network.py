@@ -34,12 +34,25 @@ def request(url: str):
     if url.startswith("https://"):
         url = url.replace("https", "http")
 
+    if not url.startswith("http"):
+        if not url.startswith("www."):
+            url = "http://www." + url
+        else:
+            url = "http://" + url
+
     # Scheme://Hostname:Port/Path
     assert url.startswith("http://"), f"Browser only supports the HTTP protocol, received {url}."
     url = url[len("http://") :]  # Remove the http portion
 
-    host, path = url.split("/", 1)
-    path = "/" + path
+    # Handle http://www.google.com/index.html
+    if url.count("/") > 2:
+        host, path = url.split("/", 1)
+        path = "/" + path
+    # Handle http://www.google.com
+    else:
+        host = url
+        path = "/"
+
     port = 80
 
     # Handle custom ports
@@ -53,7 +66,7 @@ def request(url: str):
     message = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
     s.send(message)
 
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
+    response = s.makefile("r", encoding="iso-8859-1", newline="\r\n")
 
     # Parse the status line
     status_line = response.readline()
@@ -69,6 +82,9 @@ def request(url: str):
 
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
+
+    for key, item in headers.items():
+        print("KEY: ", key, " ITEM: ", item)
 
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers

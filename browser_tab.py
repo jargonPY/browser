@@ -28,9 +28,11 @@ class Tab:
             file_content = file.read()
             self.default_style_sheet = CSSParser(file_content).parse_css_file()
 
+    def scroll_up(self) -> None:
+        self.scroll = max(self.scroll - self.SCROLL_STEP, 0)
+
     def scroll_down(self) -> None:
-        # self.scroll += self.SCROLL_STEP
-        # Use the page height to avoid scrolling past the bottom of the page
+        # Use the total page height to avoid scrolling past the bottom of the page
         max_y = self.doc_layout.block_height - (self.HEIGHT - self.CHROME_PX)
         self.scroll = min(self.scroll + self.SCROLL_STEP, max_y)
 

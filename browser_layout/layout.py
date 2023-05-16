@@ -343,7 +343,7 @@ class DocumentLayout:
         self.abs_x = Layout.H_STEP
         self.abs_y = Layout.V_STEP
         child.layout()
-        self.block_height = child.block_width + 2 * Layout.V_STEP
+        self.block_height = child.block_height + 2 * Layout.V_STEP
 
     def paint(self, display_list: list[DrawCommand]):
         self.children[0].paint(display_list)
