@@ -2,7 +2,7 @@ from typing import Tuple, TYPE_CHECKING
 import tkinter
 import tkinter.font
 from browser_config import WINDOW_WIDTH
-from browser_layout.layout import get_font
+from utils.fonts_cache import get_font
 
 if TYPE_CHECKING:
     from browser_tab import Tab

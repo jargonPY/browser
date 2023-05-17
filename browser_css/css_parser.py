@@ -9,6 +9,7 @@ class CSSParser:
     def __init__(self, text: str) -> None:
         self.text = text.strip()  # Remove all trailing white space from the CSS file
         self.index = 0
+        print("TEXT: ", text)
 
     def is_end(self) -> bool:
         return self.index >= len(self.text)
@@ -91,6 +92,9 @@ class CSSParser:
 
     def selector(self) -> Selector:
         selector_name = self.word().lower()
+        print("SELECTOR NAME: ", selector_name)
+        if selector_name.strip().startswith("."):
+            print("SELECTOR NAME: ", selector_name)
         # out: Selector = TagSelector(selector_name)
         out: Selector = ClassSelector(selector_name) if selector_name.startswith(".") else TagSelector(selector_name)
         self.white_space()

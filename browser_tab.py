@@ -1,7 +1,7 @@
-import sys
 import tkinter
 import tkinter.font
-from browser_layout.layout import Layout, DocumentLayout
+from browser_layout.layout import Layout
+from browser_layout.document_layout import DocumentLayout
 from browser_html.html_parser import HTMLParser, print_tree, Node, Element
 from draw_commands import DrawCommand
 from browser_css.css_parser import CSSParser
@@ -9,32 +9,39 @@ from browser_css.css_rules import cascade_priority, add_css_to_html_node
 from browser_network.network import request, resolve_url
 from utils.utils import tree_to_list
 from browser_html.html_nodes import Text
+from browser_config import WINDOW_HEIGHT, SCROLL_STEP, CHROME_PX
+
+# todo find another solution for dealing with potetial 'None' state (
+# * maybe intialize Tab in a valid state, although a tab without a url is a valid state)
+# * another option is to not define the state in the '__init__' method, the downside of that is that is obscures which properties a class has
 
 
 class Tab:
-    WIDTH, HEIGHT = 800, 600
-    H_STEP, V_STEP = 13, 18
-    SCROLL_STEP = 100
-    # Reserved space for the browser chrome
-    CHROME_PX = 100
-
     def __init__(self) -> None:
         self.scroll = 0
         self.url: str | None = None
         self.history: list[str] = []
+        self.display_list: list[DrawCommand] = []
 
-        # Since the Tab class is responsible for layout, styling, and painting, the default style sheet moves to the Tab constructor
         with open("./browser_css/browser_defaults.css", "r") as file:
             file_content = file.read()
             self.default_style_sheet = CSSParser(file_content).parse_css_file()
 
     def scroll_up(self) -> None:
-        self.scroll = max(self.scroll - self.SCROLL_STEP, 0)
+        self.scroll = max(self.scroll - SCROLL_STEP, 0)
 
     def scroll_down(self) -> None:
         # Use the total page height to avoid scrolling past the bottom of the page
-        max_y = self.doc_layout.block_height - (self.HEIGHT - self.CHROME_PX)
-        self.scroll = min(self.scroll + self.SCROLL_STEP, max_y)
+        max_y = self.layout_tree.block_height - (WINDOW_HEIGHT - CHROME_PX)
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+
+    def go_back(self) -> None:
+        if len(self.history) > 1:
+            # Remove current url from the list
+            self.history.pop()
+            # Remove previous url from the list
+            previous_url = self.history.pop()
+            self.load(previous_url)
 
     def click(self, x_coordinate: int, y_coordinate: int) -> None:
         """
@@ -46,8 +53,8 @@ class Tab:
         click_x, click_y = x_coordinate, y_coordinate + self.scroll
 
         # Figure out which elements are at that location
-        objs = []
-        for obj in tree_to_list(self.doc_layout, []):
+        objs: list[Layout] = []
+        for obj in tree_to_list(self.layout_tree, []):
             within_block_width = obj.abs_x <= click_x < obj.abs_x + obj.block_width
             within_block_height = obj.abs_y < click_y < obj.abs_y + obj.block_height
             if within_block_width and within_block_height:
@@ -57,36 +64,29 @@ class Tab:
             return
 
         # When clicking on some text, you’re also clicking on the paragraph it’s in, and the section that that paragraph is in, and so on.
-        # We want the one that’s “on top”, which is the last object in the list.
-
-        # This is the most specific node that was clicked
-        element = objs[-1].node
+        # We want the most specific node which is the last object in the list.
+        html_element: Node | None = objs[-1].node
         # For a link node, the most specific node that was clicked (i.e. element) is a text node.
         # But since we want to know the actual URL the user clicked on, we need to climb back up the HTML tree to find the link element.
-        while element:
-            if isinstance(element, Text):
+        while html_element:
+            if isinstance(html_element, Text):
                 pass
-            elif element.tag == "a" and "href" in element.attributes:
-                url = resolve_url(element.attributes["href"], self.url)
+            elif isinstance(html_element, Element) and html_element.tag == "a" and "href" in html_element.attributes:
+                # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
+                assert self.url is not None, "Tried to access url when url is not set"
+
+                url = resolve_url(html_element.attributes["href"], self.url)
                 return self.load_url(url)
-            element = element.parent
+            html_element = html_element.parent
 
     def draw(self, canvas: tkinter.Canvas):
         canvas.delete("all")
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.HEIGHT - self.CHROME_PX:
+            if cmd.top > self.scroll + WINDOW_HEIGHT - CHROME_PX:
                 continue
             if cmd.bottom < self.scroll:
                 continue
-            cmd.execute(self.scroll - self.CHROME_PX, canvas)
-
-    def go_back(self) -> None:
-        if len(self.history) > 1:
-            # Remove current url from the list
-            self.history.pop()
-            # Remove previous url from the list
-            previous_url = self.history.pop()
-            self.load(previous_url)
+            cmd.execute(self.scroll - CHROME_PX, canvas)
 
     def load_url(self, url: str):
         self.url = url
@@ -117,21 +117,18 @@ class Tab:
 
         for link in links:
             try:
+                # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
+                assert self.url is not None, "Tried to access url when url is not set"
+
                 header, body = request(resolve_url(link, self.url))
             # todo make the exception more sepcific
             except:
                 continue
             rules.extend(CSSParser(body).parse_css_file())
 
-        """
-        Before sorting rules, it is in file order. Since Python’s sorted function keeps the
-        relative order of things when possible, file order thus acts as a tie breaker, as it should.
-        """
         sorted_rules = sorted(rules, key=cascade_priority)
         add_css_to_html_node(html_tree, sorted_rules)
 
-        self.doc_layout = DocumentLayout(html_tree)
-        self.doc_layout.layout()
-        self.display_list = []
-        self.doc_layout.paint(self.display_list)
-        # self.display_list = self.doc_layout.display_list
+        self.layout_tree = DocumentLayout(html_tree)
+        self.layout_tree.layout()
+        self.layout_tree.paint(self.display_list)

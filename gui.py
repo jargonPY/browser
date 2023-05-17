@@ -2,7 +2,7 @@ import sys
 import tkinter
 import tkinter.font
 from typing import Literal
-from browser_layout.layout import get_font
+from utils.fonts_cache import get_font
 from browser_tab import Tab
 from browser_chrome.back_button import BackButton
 from browser_chrome.address_bar import AddressBar
@@ -146,6 +146,6 @@ class Browser:
 
 if __name__ == "__main__":
     url = sys.argv[1]
-    # Browser().load_url(url)
-    Browser().load_file("./examples/parse.html")
+    Browser().load_url(url)
+    # Browser().load_file("./examples/parse.html")
     tkinter.mainloop()
