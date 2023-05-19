@@ -90,6 +90,11 @@ class BlockLayout(Layout):
     def layout_block(self):
         previous = None
         for child in self.node.children:
+            # mode = self.layout_mode(child)
+            # if mode == "inline":
+            #     self.new_line()
+            #     self.layout_inline(child)
+
             # Constructs a Layout from an Element node, using the previous child as the sibling argument
             next = BlockLayout(child, self, previous)
             # Append the child Layout object to this (parent) array of children
@@ -100,6 +105,7 @@ class BlockLayout(Layout):
     def layout_inline(self, node: Node):
         if isinstance(node, Text):
             self.layout_text(node)
+
         elif isinstance(node, Element):
             if node.tag == "br":
                 self.new_line()
@@ -130,9 +136,9 @@ class BlockLayout(Layout):
         last_line = self.children[-1] if self.children else None
 
         # todo replace assertion with a different type checking mechanism
-        assert (
-            isinstance(last_line, LineLayout) or last_line is None
-        ), f"Expected 'last_line' to be of type 'LineLayout' or 'None', received {type(last_line)} instead"
+        # assert (
+        #     isinstance(last_line, LineLayout) or last_line is None
+        # ), f"Expected 'last_line' to be of type 'LineLayout' or 'None', received {type(last_line)} instead"
 
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)

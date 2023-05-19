@@ -146,6 +146,6 @@ class Browser:
 
 if __name__ == "__main__":
     url = sys.argv[1]
-    Browser().load_url(url)
-    # Browser().load_file("./examples/parse.html")
+    # Browser().load_url(url)
+    Browser().load_file("./examples/parse.html")
     tkinter.mainloop()

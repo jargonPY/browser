@@ -5,7 +5,7 @@ from browser_layout.document_layout import DocumentLayout
 from browser_html.html_parser import HTMLParser, print_tree, Node, Element
 from draw_commands import DrawCommand
 from browser_css.css_parser import CSSParser
-from browser_css.css_rules import cascade_priority, add_css_to_html_node
+from browser_css.css_rules import sort_rules_by_priority, add_css_to_html_node
 from browser_network.network import request, resolve_url
 from utils.utils import tree_to_list
 from browser_html.html_nodes import Text
@@ -26,6 +26,9 @@ class Tab:
         with open("./browser_css/browser_defaults.css", "r") as file:
             file_content = file.read()
             self.default_style_sheet = CSSParser(file_content).parse_css_file()
+            # ? Is this a good way of setting the default styles to the lowest priority
+            for selector, body in self.default_style_sheet:
+                selector.priority = 1
 
     def scroll_up(self) -> None:
         self.scroll = max(self.scroll - SCROLL_STEP, 0)
@@ -116,17 +119,22 @@ class Tab:
         ]
 
         for link in links:
-            try:
-                # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
-                assert self.url is not None, "Tried to access url when url is not set"
+            with open("./examples/parse.css", "r") as file:
+                file_content = file.read()
+                rules.extend(CSSParser(file_content).parse_css_file())
 
-                header, body = request(resolve_url(link, self.url))
-            # todo make the exception more sepcific
-            except:
-                continue
-            rules.extend(CSSParser(body).parse_css_file())
+            # try:
+            #     # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
+            #     assert self.url is not None, "Tried to access url when url is not set"
 
-        sorted_rules = sorted(rules, key=cascade_priority)
+            #     header, body = request(resolve_url(link, self.url))
+            #     print("B: ", body)
+            # # todo make the exception more sepcific
+            # except:
+            #     continue
+            # rules.extend(CSSParser(body).parse_css_file())
+
+        sorted_rules = sort_rules_by_priority(rules)
         add_css_to_html_node(html_tree, sorted_rules)
 
         self.layout_tree = DocumentLayout(html_tree)

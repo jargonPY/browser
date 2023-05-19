@@ -1,0 +1,14 @@
+h5, h6 {
+    display: inline;
+    font-size: 40px;
+}
+
+.light-background {
+    background-color: antiquewhite;
+    font-size: 32px;
+}
+
+#p-in-div {
+    background-color: white;
+    font-size: 48px;
+}

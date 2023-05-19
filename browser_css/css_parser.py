@@ -1,15 +1,12 @@
-from typing import Dict, Tuple
-from browser_css.css_selectors import *
+from typing import Tuple
 from utils.type_hints import CSSPropertyName, CSSPropertyValue, CSSProperties, CSSRule
-
-# todo fix parsing of whitespace between semicolon (ex. "font-weight: 400px;" instead of "font-weight:400px;")
+from browser_css.css_selectors import *
 
 
 class CSSParser:
     def __init__(self, text: str) -> None:
         self.text = text.strip()  # Remove all trailing white space from the CSS file
         self.index = 0
-        print("TEXT: ", text)
 
     def is_end(self) -> bool:
         return self.index >= len(self.text)
@@ -63,7 +60,7 @@ class CSSParser:
         value = self.word()
         return prop.lower(), value
 
-    def body(self) -> CSSProperties:
+    def parse_body(self) -> CSSProperties:
         """
         Parse CSS attributes into key, value pairs.
 
@@ -79,7 +76,7 @@ class CSSParser:
                 self.literal(";")
                 self.white_space()
             except AssertionError as e:
-                print("CSSParser AssertionError in body: ", e)
+                # print("CSSParser AssertionError in body: ", e)
                 current_char = self.ignore_until([";", "}"])
                 # Skip to the next semicolon
                 if current_char == ";":
@@ -90,19 +87,37 @@ class CSSParser:
                     break
         return pairs
 
-    def selector(self) -> Selector:
+    def parse_selector(self) -> Selector:
         selector_name = self.word().lower()
-        print("SELECTOR NAME: ", selector_name)
-        if selector_name.strip().startswith("."):
-            print("SELECTOR NAME: ", selector_name)
-        # out: Selector = TagSelector(selector_name)
-        out: Selector = ClassSelector(selector_name) if selector_name.startswith(".") else TagSelector(selector_name)
+        tags = [selector_name]
+
+        if selector_name.startswith("."):
+            out: Selector = ClassSelector(selector_name.removeprefix("."))
+        elif selector_name.startswith("#"):
+            out = IdSelector(selector_name.removeprefix("#"))
+        else:
+            out = TagSelector(selector_name)
+
         self.white_space()
         while not self.is_end() and self.text[self.index] != "{":
-            tag = self.word()
-            # descendant = TagSelector(tag.lower())
-            descendant = ClassSelector(selector_name) if selector_name.startswith(".") else TagSelector(selector_name)
-            out = DescendantSelector(out, descendant)
+            # Parse as list selector
+            if self.text[self.index] == ",":
+                self.literal(",")
+                self.white_space()
+                selector_name = self.word().lower()
+                tags.append(selector_name)
+                out = ListSelector(tags)
+            # Parse as descendant selector
+            else:
+                selector_name = self.word().lower()
+                if selector_name.startswith("."):
+                    descendant: Selector = ClassSelector(selector_name.removeprefix("."))
+                elif selector_name.startswith("#"):
+                    out = IdSelector(selector_name.removeprefix("#"))
+                else:
+                    descendant = TagSelector(selector_name)
+
+                out = DescendantSelector(out, descendant)
             self.white_space()
         return out
 
@@ -116,18 +131,18 @@ class CSSParser:
         while not self.is_end():
             try:
                 self.white_space()
-                selector = self.selector()
+                selector = self.parse_selector()
                 self.literal("{")
                 self.white_space()
-                body = self.body()
+                body = self.parse_body()
                 self.literal("}")
                 rules.append((selector, body))
             except AssertionError as e:
-                print("CSSParser AssertionError in parse_css_file: ", e)
+                # print("CSSParser AssertionError in parse_css_file: ", e)
                 current_char = self.ignore_until(["}"])
                 # Skip to the next semicolon
-                if current_char == ";":
-                    self.literal(";")
+                if current_char == "}":
+                    self.literal("}")
                     self.white_space()
                 # Or to the end of the string
                 else:
