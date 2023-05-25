@@ -15,11 +15,13 @@ b {
     font-weight: bold;
 }
 
-small { 
+small {
+    display: inline;
     font-size: 90%;
 }
 
-big { 
+big {
+    display: inline;
     font-size: 110%;
 }
 

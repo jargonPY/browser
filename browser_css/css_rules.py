@@ -106,6 +106,16 @@ def add_css_to_html_node(node: Node, rules: list["CSSRule"], inherited_rules=INH
             node.style[property] = default_value
 
     # todo update so that even the low priority selectors override the browser default rules
+    # todo update so that parent styles override the browser default rules as well
+    """
+    Ex.
+
+    <body style="background-color: green;">
+        <div>Div</div>
+    </body>
+
+    The 'div' should also have a 'background-color' of green.
+    """
     # Add selector rules
     for selector, body in rules:
         if not selector.matches(node):

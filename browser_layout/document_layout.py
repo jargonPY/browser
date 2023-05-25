@@ -1,4 +1,3 @@
-# from browser_layout.layout import Layout
 from browser_layout.block_layout import BlockLayout
 from browser_html.html_parser import Node
 from draw_commands import DrawCommand

@@ -27,8 +27,43 @@ class BlockLayout(Layout):
         self.compute_block_x_position()
         self.compute_block_y_position()
 
-        mode = self.layout_mode(self.node)
-        if mode == "block":
+        # mode = self.layout_mode(self.node)
+        # if mode == "block":
+        #     self.layout_block()
+        # else:
+        #     self.new_line()
+        #     self.layout_inline(self.node)
+
+        """
+        Block box - can have either all block-level elements as children or all inline-level elements, but not both.
+        Inline box - can only have inline-level elements as children.
+
+        This portion is responsible for wrapping the HTML nodes into "boxes", which define the layout rules
+        that will be applied to an element (i.e. a block box will have different layout rules than an inline box).
+        """
+
+        # todo if a block-level element has both block and inline children, rather than treat each inline element
+        # todo as block element, create a single block that wraps the inline elements
+
+        """
+        Ex.
+
+        <p>
+            Hello
+            <span>span</span>
+            <p>There</p>
+        </p>
+
+        Block(p)
+            AnonBlock()
+                Inline(Hello)
+                Inline(span)
+            Block(p)
+        """
+
+        block_child_nodes = [child for child in self.node.children if self.layout_mode(child) == "block"]
+
+        if len(block_child_nodes) > 0:
             self.layout_block()
         else:
             self.new_line()
@@ -90,11 +125,6 @@ class BlockLayout(Layout):
     def layout_block(self):
         previous = None
         for child in self.node.children:
-            # mode = self.layout_mode(child)
-            # if mode == "inline":
-            #     self.new_line()
-            #     self.layout_inline(child)
-
             # Constructs a Layout from an Element node, using the previous child as the sibling argument
             next = BlockLayout(child, self, previous)
             # Append the child Layout object to this (parent) array of children
