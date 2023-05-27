@@ -33,14 +33,20 @@ class LineLayout(Layout):
         That means that inside TextLayout’s layout method, we need to compute x, width, and height, but
         also font, and not y. Remember that for later.
         """
-        max_ascent = max([word.font.metrics("ascent") for word in self.children])
+        # todo look into the conditionals in 'max_ascent' and 'max_descent'
+        # ? Should a line be created if it doesn't have any children?
+        max_ascent = max([word.font.metrics("ascent") for word in self.children]) if len(self.children) > 0 else 0
         baseline = self.abs_y + 1.25 * max_ascent
         for word in self.children:
             word.abs_y = baseline - word.font.metrics("ascent")
-        max_descent = max([word.font.metrics("descent") for word in self.children])
+        # ? Should a line be created if it doesn't have any children?
+        max_descent = max([word.font.metrics("descent") for word in self.children]) if len(self.children) > 0 else 0
 
         self.block_height = 1.25 * (max_ascent + max_descent)
 
     def paint(self, display_list: list[DrawCommand]) -> None:
         for child in self.children:
             child.paint(display_list)
+
+    def __repr__(self) -> str:
+        return f"< Line abs_x={self.abs_x} abs_y={self.abs_y} style={self.node.style} >"

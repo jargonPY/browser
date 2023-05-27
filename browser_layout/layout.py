@@ -33,6 +33,10 @@ class Layout(ABC):
     def paint(self, display_list: list[DrawCommand]) -> None:
         pass
 
+    @abstractmethod
+    def __repr__(self) -> str:
+        pass
+
 
 # * Type is used for representing class types in MyPy, while TypeVar is used for defining type variables.
 T = TypeVar("T", bound=Layout)

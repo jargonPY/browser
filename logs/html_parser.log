@@ -1,0 +1,17 @@
+2023-05-27 07:40:17.344 | DEBUG    | browser_html.html_parser:parse:45 - 
+< html attributes={'lang': 'en'} style={} >
+  < head attributes={} style={} >
+    < meta attributes={'charset': 'UTF-8'} style={} >
+    < meta attributes={'http-equiv': 'X-UA-Compatible', 'content': 'IE=edge'} style={} >
+    < meta attributes={'name': 'viewport', 'content': 'width=device-width', 'initial-scale': '1.0"'} style={} >
+    < link attributes={'rel': 'stylesheet', 'type': 'text/css', 'href': 'file:///Users/eli/Documents/browser/examples/parse.css'} style={} >
+    < title attributes={} style={} >
+      'Document'
+  < body attributes={'style': 'background-color:green;'} style={} >
+    < p attributes={} style={} >
+      '\n        Hello\n        '
+      < span attributes={'style': 'background-color:orange;'} style={} >
+        'Span with more '
+        < span attributes={} style={} >
+          'nested inline elements'
+

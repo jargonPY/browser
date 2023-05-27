@@ -1,6 +1,9 @@
-from utils.utils import print_tree
+import html
+import re
+from utils.utils import print_tree, stringify_tree
 from utils.constants import SELF_CLOSING_TAGS
 from browser_html.html_nodes import *
+from loguru import logger
 
 
 class HTMLParser:
@@ -19,7 +22,7 @@ class HTMLParser:
                 in_tag = True
                 # Parse 'text' (which in this case is a sequence of characters outside a tag) as a 'Text' node
                 if text:
-                    self.parse_raw_text(text)
+                    self.parse_raw_text(html.unescape(text))
                 text = ""
             elif c == ">":
                 in_tag = False
@@ -37,7 +40,10 @@ class HTMLParser:
         """
         if not in_tag and text:
             self.parse_raw_text(text)
-        return self.finish()
+
+        html_tree = self.finish()
+        logger.debug(stringify_tree(html_tree))
+        return html_tree
 
     def parse_raw_text(self, text: str):
         """
@@ -87,6 +93,16 @@ class HTMLParser:
             self.unfinished.append(node)
 
     def get_attributes(self, text: str):
+        # todo fix parsing tags and attributes
+        """
+        Since 'text.split()' seperates by whitespace, we get the wrong result when parsing
+
+        text = 'span style="background-color: orange;"'
+        # Results in
+        parts = ['span', 'style="background-color:', 'orange;"']
+        # But the desired result is
+        parts = ['span', 'style="background-color: orange;"']
+        """
         parts = text.split()
         tag = parts[0].lower()
         attributes = {}

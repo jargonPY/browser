@@ -1,13 +1,20 @@
 div {
     display: block;
-    background-color: gray;
 }
 
-a { 
+code {
+    display: inline;
+    background-color: lightgray;
+    font-family: "courier new";
+}
+
+a {
+    display: inline;
     color: blue;
 }
 
-i { 
+i {
+    display: inline;
     font-style: italic;
 }
 
@@ -50,26 +57,38 @@ aside {
 }
 
 h1 {
+    font-size: 32px;
+    font-weight: bold;
     display: block;
 }
 
 h2 {
+    font-size: 28px;
+    font-weight: bold;
     display: block;
 }
 
 h3 {
+    font-size: 24px;
+    font-weight: bold;
     display: block;
 }
 
 h4 {
+    font-size: 20px;
+    font-weight: bold;
     display: block;
 }
 
 h5 {
+    font-size: 16px;
+    font-weight: bold;
     display: block;
 }
 
 h6 {
+    font-size: 12px;
+    font-weight: bold;
     display: block;
 }
 
@@ -78,6 +97,10 @@ p {
 }
 
 hgroup {
+    display: block;
+}
+
+head {
     display: block;
 }
 

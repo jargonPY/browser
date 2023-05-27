@@ -1,4 +1,5 @@
 import socket
+from loguru import logger
 
 
 def resolve_url(relative_url: str, host_url: str) -> str:
@@ -26,6 +27,7 @@ def resolve_url(relative_url: str, host_url: str) -> str:
 
 
 def request(url: str):
+    logger.debug("URL")
     """
     Url structure:
         Scheme://Hostname:Port/Path
@@ -68,7 +70,8 @@ def request(url: str):
     message = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
     s.send(message)
 
-    response = s.makefile("r", encoding="iso-8859-1", newline="\r\n")
+    # todo 'encoding' should depend on the headers in the response
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
 
     # Parse the status line
     status_line = response.readline()
@@ -84,6 +87,8 @@ def request(url: str):
 
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
+
+    print(headers)
 
     # for key, item in headers.items():
     #     print("KEY: ", key, " ITEM: ", item)

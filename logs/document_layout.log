@@ -1,0 +1,13 @@
+2023-05-27 07:40:17.350 | DEBUG    | browser_layout.document_layout:layout:32 - 
+< Document abs_x=13 abs_y=18 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'display': 'block'} >
+  < Block abs_x=13 abs_y=18 rel_x=0 rel_y=0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'display': 'block', 'background-color': 'green'} >
+    < Block abs_x=13 abs_y=18 rel_x=260 rel_y=0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'display': 'block'} >
+      < Line abs_x=13 abs_y=18 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'display': 'block'} >
+        < Text abs_x=13 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=block>
+        < Text abs_x=46 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+        < Text abs_x=79 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+        < Text abs_x=107 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+        < Text abs_x=140 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+        < Text abs_x=183 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+        < Text abs_x=217 abs_y=21.0 style={'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'} p=inline>
+

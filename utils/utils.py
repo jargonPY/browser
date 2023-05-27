@@ -13,3 +13,17 @@ def print_tree(node: Node, indent=0):
     print(" " * indent, node)
     for child in node.children:
         print_tree(child, indent + 2)
+
+
+def stringify_tree(node: Node):
+    text = "\n"
+
+    def recurse(node: Node, indent=0):
+        nonlocal text
+        text += " " * indent + repr(node) + "\n"
+
+        for child in node.children:
+            recurse(child, indent + 2)
+
+    recurse(node)
+    return text

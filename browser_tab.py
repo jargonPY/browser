@@ -2,7 +2,7 @@ import tkinter
 import tkinter.font
 from browser_layout.layout import Layout
 from browser_layout.document_layout import DocumentLayout
-from browser_html.html_parser import HTMLParser, print_tree, Node, Element
+from browser_html.html_parser import HTMLParser, Node, Element
 from draw_commands import DrawCommand
 from browser_css.css_parser import CSSParser
 from browser_css.css_rules import sort_rules_by_priority, add_css_to_html_node
@@ -79,6 +79,8 @@ class Tab:
                 assert self.url is not None, "Tried to access url when url is not set"
 
                 url = resolve_url(html_element.attributes["href"], self.url)
+                # Clear the current layout tree when fetching a new resource
+                self.display_list = []
                 return self.load_url(url)
             html_element = html_element.parent
 

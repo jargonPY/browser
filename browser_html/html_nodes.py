@@ -35,4 +35,4 @@ class Element(Node):
         self.style: "CSSProperties" = {}
 
     def __repr__(self) -> str:
-        return f"< {self.tag} {self.attributes} {self.style} >"
+        return f"< {self.tag} attributes={self.attributes} style={self.style} >"

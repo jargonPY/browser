@@ -1,3 +1,4 @@
+import copy
 from typing import Union
 from browser_layout.layout import Layout
 from browser_html.html_parser import Node, Element, Text
@@ -5,6 +6,7 @@ from browser_layout.line_layout import LineLayout
 from browser_layout.text_layout import TextLayout
 from draw_commands import DrawCommand, DrawRect
 from utils.fonts_cache import get_tk_font_from_css_font
+from loguru import logger
 
 
 class BlockLayout(Layout):
@@ -122,15 +124,43 @@ class BlockLayout(Layout):
         """
         self.block_height = sum([child.block_height for child in self.children])
 
+    # def layout_block(self):
+    #     previous = None
+    #     for child in self.node.children:
+    #         # Constructs a Layout from an Element node, using the previous child as the sibling argument
+    #         next = BlockLayout(child, self, previous)
+    #         # Append the child Layout object to this (parent) array of children
+    #         self.children.append(next)
+    #         # Store the child ot be used as the previous sibling
+    #         previous = next
+
     def layout_block(self):
         previous = None
+        anonymous_block_children = []
         for child in self.node.children:
+            if self.layout_mode(child) == "inline":
+                anonymous_block_children.append(child)
+                continue
+
+            if self.layout_mode(child) == "block" and len(anonymous_block_children) > 0:
+                node = copy.deepcopy(self.node)
+                node.children = anonymous_block_children
+                next = BlockLayout(node, self, previous)
+                self.children.append(next)
+                previous = next
+                anonymous_block_children = []
             # Constructs a Layout from an Element node, using the previous child as the sibling argument
             next = BlockLayout(child, self, previous)
             # Append the child Layout object to this (parent) array of children
             self.children.append(next)
             # Store the child ot be used as the previous sibling
             previous = next
+
+        if len(anonymous_block_children) > 0:
+            node = copy.deepcopy(self.node)
+            node.children = anonymous_block_children
+            next = BlockLayout(node, self, previous)
+            self.children.append(next)
 
     def layout_inline(self, node: Node):
         if isinstance(node, Text):
@@ -172,3 +202,6 @@ class BlockLayout(Layout):
 
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
+
+    def __repr__(self) -> str:
+        return f"< Block abs_x={self.abs_x} abs_y={self.abs_y} rel_x={self.rel_x} rel_y={self.rel_y} style={self.node.style} >"
