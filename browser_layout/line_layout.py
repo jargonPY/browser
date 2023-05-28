@@ -5,6 +5,7 @@ from draw_commands import DrawCommand
 
 if TYPE_CHECKING:
     from browser_layout.block_layout import BlockLayout
+    from browser_layout.text_layout import TextLayout
 
 
 class LineLayout(Layout):
@@ -25,8 +26,8 @@ class LineLayout(Layout):
             self.abs_y = self.parent.abs_y
 
         # Before computing block_height, lay out each word
-        for word in self.children:
-            word.layout()
+        for inline_box in self.children:
+            inline_box.layout()
 
         """
         Note that this code is reading from a font field on each word and writing to each word’s y field.
@@ -35,14 +36,20 @@ class LineLayout(Layout):
         """
         # todo look into the conditionals in 'max_ascent' and 'max_descent'
         # ? Should a line be created if it doesn't have any children?
-        max_ascent = max([word.font.metrics("ascent") for word in self.children]) if len(self.children) > 0 else 0
+        words: list["TextLayout"] = []
+        for inline_box in self.children:
+            for word in inline_box.children:
+                words.append(word)
+        max_ascent = max([word.font.metrics("ascent") for word in words]) if len(words) > 0 else 0
         baseline = self.abs_y + 1.25 * max_ascent
-        for word in self.children:
+        for word in words:
             word.abs_y = baseline - word.font.metrics("ascent")
         # ? Should a line be created if it doesn't have any children?
-        max_descent = max([word.font.metrics("descent") for word in self.children]) if len(self.children) > 0 else 0
+        max_descent = max([word.font.metrics("descent") for word in words]) if len(words) > 0 else 0
 
         self.block_height = 1.25 * (max_ascent + max_descent)
+        for inline_box in self.children:
+            inline_box.block_height = self.block_height
 
     def paint(self, display_list: list[DrawCommand]) -> None:
         for child in self.children:

@@ -3,10 +3,37 @@ from typing import Union
 from browser_layout.layout import Layout
 from browser_html.html_parser import Node, Element, Text
 from browser_layout.line_layout import LineLayout
+from browser_layout.inline_layout import InlineLayout
 from browser_layout.text_layout import TextLayout
 from draw_commands import DrawCommand, DrawRect
 from utils.fonts_cache import get_tk_font_from_css_font
 from loguru import logger
+
+
+def compute_box_width(box: Layout):
+    if isinstance(box, BlockLayout):
+        # Blocks are as wide as their parents
+        box.block_width = box.parent.block_width
+
+
+def compute_box_height(box: Layout):
+    if isinstance(box, BlockLayout):
+        # todo this method has certain preconditions that must be true, either include them as a doc string document or explicitly check/validate them
+        # todo for example to compute the 'block_height' all of its children heights must be computed first
+        # Compute the height of a paragraph of text by summing the height of its lines
+        box.block_height = sum([child.block_height for child in box.children])
+
+
+def compute_box_x_position(box: Layout):
+    if isinstance(box, BlockLayout):
+        # Blocks are as wide as their parents
+        box.block_width = box.parent.block_width
+
+
+def compute_box_y_position(box: Layout):
+    if isinstance(box, BlockLayout):
+        # Blocks are as wide as their parents
+        box.block_width = box.parent.block_width
 
 
 class BlockLayout(Layout):
@@ -25,16 +52,11 @@ class BlockLayout(Layout):
         3. Layout the children nodes by calling their layout method recursively.
         4. Compute the 'height' field based on the child node heights.
         """
+
+        # todo move position computation into a seperate function and combine with other box types (this will centralize all position computations)
         self.compute_block_width()
         self.compute_block_x_position()
         self.compute_block_y_position()
-
-        # mode = self.layout_mode(self.node)
-        # if mode == "block":
-        #     self.layout_block()
-        # else:
-        #     self.new_line()
-        #     self.layout_inline(self.node)
 
         """
         Block box - can have either all block-level elements as children or all inline-level elements, but not both.
@@ -124,16 +146,6 @@ class BlockLayout(Layout):
         """
         self.block_height = sum([child.block_height for child in self.children])
 
-    # def layout_block(self):
-    #     previous = None
-    #     for child in self.node.children:
-    #         # Constructs a Layout from an Element node, using the previous child as the sibling argument
-    #         next = BlockLayout(child, self, previous)
-    #         # Append the child Layout object to this (parent) array of children
-    #         self.children.append(next)
-    #         # Store the child ot be used as the previous sibling
-    #         previous = next
-
     def layout_block(self):
         previous = None
         anonymous_block_children = []
@@ -174,6 +186,12 @@ class BlockLayout(Layout):
                 self.layout_inline(child)
 
     def layout_text(self, node: Text) -> None:
+        line = self.children[-1]
+        if len(line.children) > 0:
+            inline_layout = InlineLayout(node, line, line.children[-1])
+        else:
+            inline_layout = InlineLayout(node, line, None)
+        line.children.append(inline_layout)
         for word in node.text.split():
             font = get_tk_font_from_css_font(node)
             word_width = font.measure(word)
@@ -181,11 +199,14 @@ class BlockLayout(Layout):
             # Move to new line
             if self.rel_x + word_width > self.block_width:
                 self.new_line()
+                line = self.children[-1]
+                inline_layout = InlineLayout(node, line, None)
+                line.children.append(inline_layout)
 
             # The LineLayouts are children of the BlockLayout, so the current line can be found at the end of the children array
-            line = self.children[-1]
-            text = TextLayout(node, line, self.previous_word, word)
-            line.children.append(text)
+            # line = self.children[-1]
+            text = TextLayout(node, inline_layout, self.previous_word, word)
+            inline_layout.children.append(text)
             self.previous_word = text
 
             self.rel_x += word_width + font.measure(" ")
