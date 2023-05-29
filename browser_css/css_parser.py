@@ -52,12 +52,27 @@ class CSSParser:
         assert not self.is_end() and self.text[self.index] == literal, f"Expected {literal}"
         self.index += 1
 
+    # def property_value_pair(self) -> Tuple[CSSPropertyName, CSSPropertyValue]:
+    #     prop = self.word()
+    #     self.white_space()
+    #     self.literal(":")
+    #     self.white_space()
+    #     value = self.word()
+    #     return prop.lower(), value
+
     def property_value_pair(self) -> Tuple[CSSPropertyName, CSSPropertyValue]:
         prop = self.word()
+        value = ""
         self.white_space()
         self.literal(":")
-        self.white_space()
-        value = self.word()
+
+        while not self.is_end() and self.text[self.index] != ";":
+            self.white_space()
+            # Add a space between values
+            if len(value) > 0:
+                value += " "
+            value += self.word()
+
         return prop.lower(), value
 
     def parse_body(self) -> CSSProperties:
@@ -72,9 +87,9 @@ class CSSParser:
             try:
                 prop, value = self.property_value_pair()
                 pairs[prop] = value
-                self.white_space()
+                # self.white_space()
                 self.literal(";")
-                self.white_space()
+                # self.white_space()
             except AssertionError as e:
                 # print("CSSParser AssertionError in body: ", e)
                 current_char = self.ignore_until([";", "}"])

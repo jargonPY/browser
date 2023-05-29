@@ -14,6 +14,8 @@ from loguru import logger
 logger.remove()
 logger.add("logs/html_parser.log", mode="w", level="DEBUG", filter="browser_html.html_parser")
 logger.add("logs/document_layout.log", mode="w", level="DEBUG", filter="browser_layout.document_layout")
+logger.add("logs/browser_tab.log", mode="w", level="DEBUG", filter="browser_tab")
+logger.add("logs/css_rules.log", mode="w", level="DEBUG", filter="browser_css.css_rules")
 
 
 class Browser:

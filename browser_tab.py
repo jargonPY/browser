@@ -10,6 +10,8 @@ from browser_network.network import request, resolve_url
 from utils.utils import tree_to_list
 from browser_html.html_nodes import Text
 from browser_config import WINDOW_HEIGHT, SCROLL_STEP, CHROME_PX
+from utils.utils import stringify_tree
+from loguru import logger
 
 # todo find another solution for dealing with potetial 'None' state (
 # * maybe intialize Tab in a valid state, although a tab without a url is a valid state)
@@ -138,6 +140,7 @@ class Tab:
 
         sorted_rules = sort_rules_by_priority(rules)
         add_css_to_html_node(html_tree, sorted_rules)
+        logger.debug(stringify_tree(html_tree))
 
         self.layout_tree = DocumentLayout(html_tree)
         self.layout_tree.layout()

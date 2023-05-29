@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 from browser_css.css_parser import CSSParser
 from browser_css.css_selectors import *
 from utils.constants import INHERITED_PROPERTIES
+from loguru import logger
 
 if TYPE_CHECKING:
     from utils.type_hints import CSSRule
@@ -131,6 +132,7 @@ def add_css_to_html_node(node: Node, rules: list["CSSRule"], inherited_rules=INH
     # # Add style attribute rules
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).parse_body()
+        logger.debug(pairs)
         for property, value in pairs.items():
             computed_value = compute_style(node, property, value)
             if not computed_value:

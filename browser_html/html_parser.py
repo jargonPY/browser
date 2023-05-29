@@ -102,11 +102,23 @@ class HTMLParser:
         parts = ['span', 'style="background-color:', 'orange;"']
         # But the desired result is
         parts = ['span', 'style="background-color: orange;"']
+
+        Style declarations are seperated by a semicolon.
         """
-        parts = text.split()
+
+        # parts = text.split()
+
+        # Pattern to match spaces outside quotes
+        pattern = r'\s+(?=([^"]*"[^"]*")*[^"]*$)'
+        # Split the string using the pattern
+        parts = re.split(pattern, text)
+
         tag = parts[0].lower()
         attributes = {}
         for attr_pair in parts[1:]:
+            # ? Why does the regex pattern return some 'None' values?
+            if attr_pair is None:
+                continue
             # An unquoted attribute, where an equal sign separates the two
             if "=" in attr_pair:
                 key, value = attr_pair.split("=", 1)

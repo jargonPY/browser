@@ -8,32 +8,12 @@ from browser_layout.text_layout import TextLayout
 from draw_commands import DrawCommand, DrawRect
 from utils.fonts_cache import get_tk_font_from_css_font
 from loguru import logger
-
-
-def compute_box_width(box: Layout):
-    if isinstance(box, BlockLayout):
-        # Blocks are as wide as their parents
-        box.block_width = box.parent.block_width
-
-
-def compute_box_height(box: Layout):
-    if isinstance(box, BlockLayout):
-        # todo this method has certain preconditions that must be true, either include them as a doc string document or explicitly check/validate them
-        # todo for example to compute the 'block_height' all of its children heights must be computed first
-        # Compute the height of a paragraph of text by summing the height of its lines
-        box.block_height = sum([child.block_height for child in box.children])
-
-
-def compute_box_x_position(box: Layout):
-    if isinstance(box, BlockLayout):
-        # Blocks are as wide as their parents
-        box.block_width = box.parent.block_width
-
-
-def compute_box_y_position(box: Layout):
-    if isinstance(box, BlockLayout):
-        # Blocks are as wide as their parents
-        box.block_width = box.parent.block_width
+from browser_layout.box_position import (
+    compute_box_height,
+    compute_box_width,
+    compute_box_x_position,
+    compute_box_y_position,
+)
 
 
 class BlockLayout(Layout):
@@ -54,9 +34,9 @@ class BlockLayout(Layout):
         """
 
         # todo move position computation into a seperate function and combine with other box types (this will centralize all position computations)
-        self.compute_block_width()
-        self.compute_block_x_position()
-        self.compute_block_y_position()
+        compute_box_width(self, "block")
+        compute_box_x_position(self, "block")
+        compute_box_y_position(self, "block")
 
         """
         Block box - can have either all block-level elements as children or all inline-level elements, but not both.
@@ -96,7 +76,7 @@ class BlockLayout(Layout):
         for child in self.children:
             child.layout()
 
-        self.compute_block_height()
+        compute_box_height(self, "block")
 
     def paint(self, display_list: list[DrawCommand]):
         if isinstance(self.node, Element):
