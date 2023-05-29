@@ -1,6 +1,8 @@
+import json
 from typing import Tuple
 from utils.type_hints import CSSPropertyName, CSSPropertyValue, CSSProperties, CSSRule
 from browser_css.css_selectors import *
+from loguru import logger
 
 
 class CSSParser:
@@ -87,9 +89,9 @@ class CSSParser:
             try:
                 prop, value = self.property_value_pair()
                 pairs[prop] = value
-                # self.white_space()
+                self.white_space()
                 self.literal(";")
-                # self.white_space()
+                self.white_space()
             except AssertionError as e:
                 # print("CSSParser AssertionError in body: ", e)
                 current_char = self.ignore_until([";", "}"])
@@ -162,4 +164,7 @@ class CSSParser:
                 # Or to the end of the string
                 else:
                     break
+        # todo the logger below throws 'TypeError: Object of type TagSelector is not JSON serializable'
+        # logger.debug(f"\nRules: {json.dumps(rules, indent=4)}\n")
+        logger.debug(f"\nRules: {rules}\n")
         return rules

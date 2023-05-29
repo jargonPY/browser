@@ -1,4 +1,4 @@
-from typing import Tuple, Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 from browser_layout.layout import Layout
 from loguru import logger
 
@@ -20,73 +20,6 @@ The order the values are written will determine which sides each applies to:
 """
 
 BoxType = Literal["block", "inline", "line", "text"]
-
-MarginTop = int
-MarginBottom = int
-MarginRight = int
-MarginLeft = int
-Margin = Tuple[MarginTop, MarginBottom, MarginRight, MarginLeft]
-
-
-def compute_margin_top(box: Layout) -> int:
-    # todo 'px' should be resolved in 'css_rules' (similar to 'compute_style')
-    if "margin-top" in box.node.style:
-        margin_top = float(box.node.style["margin-top"].replace("px", ""))
-        return margin_top
-    # 'margin': '40px 40px'
-    elif "margin" in box.node.style:
-        margin = box.node.style["margin"].split()
-        margin = [float(elem.replace("px", "")) for elem in margin]
-        return margin[0]
-    return 0
-
-
-def compute_margin_bottom(box: Layout) -> int:
-    if "margin-bottom" in box.node.style:
-        margin_bottom = float(box.node.style["margin-bottom"].replace("px", ""))
-        return margin_bottom
-    elif "margin" in box.node.style:
-        margin = box.node.style["margin"].split()
-        margin = [float(elem.replace("px", "")) for elem in margin]
-        if len(margin) == 2:
-            return margin[0]
-        if len(margin) == 3:
-            return margin[2]
-        if len(margin) == 4:
-            return margin[2]
-    return 0
-
-
-def compute_margin_right(box: Layout) -> int:
-    if "margin-right" in box.node.style:
-        margin_right = float(box.node.style["margin-right"].replace("px", ""))
-        return margin_right
-    elif "margin" in box.node.style:
-        margin = box.node.style["margin"].split()
-        margin = [float(elem.replace("px", "")) for elem in margin]
-        if len(margin) == 2:
-            return margin[1]
-        if len(margin) == 3:
-            return margin[1]
-        if len(margin) == 4:
-            return margin[1]
-    return 0
-
-
-def compute_margin_left(box: Layout) -> int:
-    if "margin-left" in box.node.style:
-        margin_left = float(box.node.style["margin-left"].replace("px", ""))
-        return margin_left
-    elif "margin" in box.node.style:
-        margin = box.node.style["margin"].split()
-        margin = [float(elem.replace("px", "")) for elem in margin]
-        if len(margin) == 2:
-            return margin[1]
-        if len(margin) == 3:
-            return margin[1]
-        if len(margin) == 4:
-            return margin[3]
-    return 0
 
 
 def compute_box_width(box: Layout, box_type: BoxType):
@@ -112,8 +45,7 @@ def compute_box_height(box: Layout, box_type: BoxType):
         # todo this method has certain preconditions that must be true, either include them as a doc string document or explicitly check/validate them
         # todo for example to compute the 'block_height' all of its children heights must be computed first
         # Compute the height of a paragraph of text by summing the height of its lines
-        margin_top = compute_margin_top(box)
-        box.block_height = sum([child.block_height for child in box.children]) + margin_top
+        box.block_height = sum([child.block_height for child in box.children]) + box.margin.top + box.margin.bottom
 
     elif box_type == "line":
         words: list["TextLayout"] = []
@@ -164,13 +96,12 @@ def compute_box_x_position(box: Layout, box_type: BoxType):
 
 def compute_box_y_position(box: Layout, box_type: BoxType):
     if box_type == "block":
-        margin_top = compute_margin_top(box)
         # Vertical position depends on the position and height of their previous sibling
         if box.previous_sibling:
-            box.abs_y = box.previous_sibling.abs_y + box.previous_sibling.block_height + margin_top
+            box.abs_y = box.previous_sibling.y_bottom + box.margin.top
         # If there is no previous siblng, the block starts at the paren'ts top edge
         else:
-            box.abs_y = box.parent.abs_y + margin_top
+            box.abs_y = box.parent.abs_y + box.margin.top
 
     elif box_type == "line":
         if box.previous_sibling is not None:

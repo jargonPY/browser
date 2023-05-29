@@ -35,4 +35,6 @@ class DocumentLayout:
         self.children[0].paint(display_list)
 
     def __repr__(self) -> str:
+        # todo add node tag name to the string representation
+        # return f"< Document node={self.node.tag} abs_x={self.abs_x} abs_y={self.abs_y} style={self.node.style} >"
         return f"< Document abs_x={self.abs_x} abs_y={self.abs_y} style={self.node.style} >"

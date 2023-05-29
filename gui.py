@@ -8,14 +8,8 @@ from browser_chrome.back_button import BackButton
 from browser_chrome.address_bar import AddressBar
 from browser_chrome.new_tab_button import NewTabButton
 from browser_chrome.tab_header import TabHeader
+from logger_config import setup_logger
 from loguru import logger
-
-# Remove the default logging handler to stderr
-logger.remove()
-logger.add("logs/html_parser.log", mode="w", level="DEBUG", filter="browser_html.html_parser")
-logger.add("logs/document_layout.log", mode="w", level="DEBUG", filter="browser_layout.document_layout")
-logger.add("logs/browser_tab.log", mode="w", level="DEBUG", filter="browser_tab")
-logger.add("logs/css_rules.log", mode="w", level="DEBUG", filter="browser_css.css_rules")
 
 
 class Browser:
@@ -154,6 +148,7 @@ class Browser:
 
 if __name__ == "__main__":
     url = sys.argv[1]
-    # Browser().load_url(url)
-    Browser().load_file("./examples/nav.html")
+    setup_logger()
+    Browser().load_url(url)
+    # Browser().load_file("./examples/nav.html")
     tkinter.mainloop()

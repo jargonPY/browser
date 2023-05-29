@@ -122,21 +122,25 @@ class Tab:
             and node.attributes.get("rel") == "stylesheet"
         ]
 
+        # with open("./examples/parse.css", "r") as file:
+        #     file_content = file.read()
+        #     rules.extend(CSSParser(file_content).parse_css_file())
+
         for link in links:
-            with open("./examples/parse.css", "r") as file:
-                file_content = file.read()
-                rules.extend(CSSParser(file_content).parse_css_file())
+            try:
+                # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
+                assert self.url is not None, "Tried to access url when url is not set"
 
-            # try:
-            #     # todo find another solution for dealing with potetial 'None' state (maybe intialize Tab in a valid state, although a tab without a url is a valid state)
-            #     assert self.url is not None, "Tried to access url when url is not set"
+                header, body = request(resolve_url(link, self.url))
+                logger.debug(f"Link: {link}")
+                logger.debug(f"\n\n{body}")
 
-            #     header, body = request(resolve_url(link, self.url))
-            #     print("B: ", body)
-            # # todo make the exception more sepcific
-            # except:
-            #     continue
-            # rules.extend(CSSParser(body).parse_css_file())
+            # todo make the exception more sepcific
+            except Exception as e:
+                logger.exception(e)
+                continue
+
+            rules.extend(CSSParser(body).parse_css_file())
 
         sorted_rules = sort_rules_by_priority(rules)
         add_css_to_html_node(html_tree, sorted_rules)

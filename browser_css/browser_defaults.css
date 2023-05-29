@@ -1,5 +1,19 @@
+body {
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
 div {
     display: block;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+p {
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 
 code {
@@ -36,9 +50,6 @@ html {
     display: block;
 }
 
-body {
-    display: block;
-}
 
 article {
     display: block;
@@ -92,9 +103,6 @@ h6 {
     display: block;
 }
 
-p {
-    display: block;
-}
 
 hgroup {
     display: block;

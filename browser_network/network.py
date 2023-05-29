@@ -1,4 +1,5 @@
 import socket
+import json
 from loguru import logger
 
 
@@ -27,7 +28,6 @@ def resolve_url(relative_url: str, host_url: str) -> str:
 
 
 def request(url: str):
-    logger.debug("URL")
     """
     Url structure:
         Scheme://Hostname:Port/Path
@@ -62,7 +62,7 @@ def request(url: str):
         host, custom_port = host.split(":", 1)
         port = int(custom_port)
 
-    # print("HOST: ", host, " PATH: ", path)
+    logger.debug(f"Provided Url: {url}, Host: {host}, Port: {port}")
 
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
@@ -88,10 +88,7 @@ def request(url: str):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
-    print(headers)
-
-    # for key, item in headers.items():
-    #     print("KEY: ", key, " ITEM: ", item)
+    logger.debug(f"\nHeaders: {json.dumps(headers, indent=4)}\n")
 
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers

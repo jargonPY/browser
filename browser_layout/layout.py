@@ -1,14 +1,24 @@
 import tkinter.font
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Union, TypeVar
 from browser_html.html_parser import Node
 from draw_commands import DrawCommand
+from browser_layout.box_margin import Margin, resolve_margin
 
 
 """
 cursor_x --> rel_x
 x        --> abs_x
 """
+
+
+@dataclass
+class Padding:
+    top: float = 0
+    bottom: float = 0
+    right: float = 0
+    left: float = 0
 
 
 class Layout(ABC):
@@ -23,7 +33,20 @@ class Layout(ABC):
         self.block_width: float = 0
         self.block_height: float = 0
 
+        self.margin = resolve_margin(node)
+        self.padding = Padding()
+
         self.font: tkinter.font.Font = tkinter.font.Font()
+
+    @property
+    def total_height(self) -> float:
+        # todo this method assumes 'block_height' is only the height of the content, right now that is not the case
+        # todo 'block_height' currently represents the total height of the block
+        return self.block_height + self.margin.top + self.margin.bottom + self.padding.top + self.padding.bottom
+
+    @property
+    def y_bottom(self) -> float:
+        return self.abs_y + (self.block_height - self.margin.top - self.padding.top)
 
     @abstractmethod
     def layout(self) -> None:

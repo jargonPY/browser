@@ -36,6 +36,7 @@ def test_parse_body():
             """
 
     result = CSSParser(text).parse_body()
+    print("R: ", result)
 
     assert result == {"color": "red", "background-color": "white"}
 
