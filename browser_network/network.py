@@ -1,4 +1,5 @@
 import socket
+import ssl
 import json
 from loguru import logger
 
@@ -7,7 +8,6 @@ def resolve_url(relative_url: str, host_url: str) -> str:
     """
     Converts a relative URL into a full URL.
     """
-
     # Full URL
     if "://" in relative_url:
         return relative_url
@@ -27,14 +27,8 @@ def resolve_url(relative_url: str, host_url: str) -> str:
         return dir + "/" + relative_url
 
 
-def request(url: str):
-    """
-    Url structure:
-        Scheme://Hostname:Port/Path
-        http://example.org:8080/index.html
-    """
-    if url.startswith("https://"):
-        url = url.replace("https", "http")
+def parse_url(url: str):
+    logger.debug(f"Provided Url: {url}")
 
     if not url.startswith("http"):
         if not url.startswith("www."):
@@ -42,9 +36,10 @@ def request(url: str):
         else:
             url = "http://" + url
 
+    scheme, url = url.split("://", 1)
+
     # Scheme://Hostname:Port/Path
-    assert url.startswith("http://"), f"Browser only supports the HTTP protocol, received {url}."
-    url = url[len("http://") :]  # Remove the http portion
+    assert scheme in ["http", "https"], f"Browser only supports the HTTP and HTTPS protocols, received {url}."
 
     # Handle http://www.google.com/index.html
     if url.count("/") > 0:
@@ -55,17 +50,32 @@ def request(url: str):
         host = url
         path = "/"
 
-    port = 80
+    # Encrypted HTTP connections usually use port 443 instead of port 80
+    port = 80 if scheme == "http" else 443
 
     # Handle custom ports
     if ":" in host:
         host, custom_port = host.split(":", 1)
         port = int(custom_port)
 
-    logger.debug(f"Provided Url: {url}, Host: {host}, Port: {port}")
+    logger.debug(f"Url: {url}, Scheme: {scheme}, Host: {host}, Port: {port}, Path: {path}")
+    return scheme, host, port, path
+
+
+def request(url: str):
+    """
+    Url structure:
+        Scheme://Hostname:Port/Path
+        http://example.org:8080/index.html
+    """
+    scheme, host, port, path = parse_url(url)
 
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
 
     message = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
     s.send(message)
@@ -78,7 +88,7 @@ def request(url: str):
     version, status, explanation = status_line.split(" ", 2)
     assert status == "200", "{}: {}".format(status, explanation)
 
-    # Parse the headers
+    # Parse the headers line by line
     headers = {}
     while True:
         line = response.readline()
@@ -95,5 +105,7 @@ def request(url: str):
 
     body = response.read()
     s.close()
+
+    logger.debug(f"\nBody: {body}\n")
 
     return headers, body

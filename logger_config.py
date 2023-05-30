@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+import functools
+from typing import Any, Callable, TYPE_CHECKING
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -26,3 +27,14 @@ def setup_logger():
     #     level="DEBUG",
     #     filter=lambda record: "file_name" in record["extra"] and record["extra"]["file_name"] == "css_files",
     # )
+
+
+def benchmark(func: Callable[..., Any], random_arg: str) -> Callable[..., Any]:
+    @functools.wraps(func)  # Makes func.__name__ return the name of the wrapped function rather than 'wrapper'
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        logger.info(args)
+        value = func(*args, **kwargs)
+        logger.info(value)
+        return value
+
+    return wrapper
