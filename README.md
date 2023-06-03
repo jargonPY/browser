@@ -6,7 +6,7 @@ This implementation extends the original browser to support:
 
 - A more complete implementation of the [box model](https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/The_box_model), to support margins and padding.
 
-- A more complete implementation of the layout of block-level and inline-level elements as described by the [visual formatting model](Visual formatting model).
+- A more complete implementation of the layout of block-level and inline-level elements as described by the [visual formatting model](https://www.w3.org/TR/CSS2/visuren.html).
 
 - Added support for additional CSS selectors.
 
